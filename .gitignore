@@ -1,0 +1,10 @@
+# Object file and executable file
+*.o
+client
+server
+
+# Swap file
+*.swp
+
+# File being edited
+*~
