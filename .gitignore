@@ -1,7 +1,5 @@
-# Object file and executable file
+# Object file
 *.o
-client
-server
 
 # Swap file
 *.swp
