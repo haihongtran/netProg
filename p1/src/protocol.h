@@ -17,7 +17,7 @@
 
 #define PORT_NUMBER     12345
 
-typedef struct appHeader {
+typedef struct _appHeader {
     unsigned char   version;
     unsigned char   userId;
     unsigned int    sequence;
