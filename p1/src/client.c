@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
     cmd_pkt clientSendCmdPkt;
     data_pkt clientSendDataPkt;
     data_pkt clientRecvPkt;
-    unsigned int bytes_read;
+    int bytes_read;
     int read_file_complete = 0;
 
     if (argc != 4)
