@@ -81,20 +81,11 @@ int main(int argc, char const *argv[])
                 bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
                 if (bytes_read == 0) // EOF
                 {
-                    /* User enters file name */
-                    char* fileName = (char*) malloc(MAX_NAME_LEN);
-                    printf("Enter file name to store: ");
-                    fgets(fileName, MAX_NAME_LEN, stdin);
-
-                    /* Remove trailing newline */
-                    if ((strlen(fileName) > 0) && (fileName[strlen(fileName) - 1] == '\n'))
-                        fileName[strlen(fileName) - 1] = '\0';
-
                     /* Construct and send DATA_STORE packet */
-                    memcpy((void*) &clientSendPkt.data, fileName, strlen(fileName) + 1);
+                    memcpy((void*) &clientSendPkt.data, argv[3], strlen(argv[3]) + 1);
                     nextSeq = ntohs(clientSendPkt.sequence) + 1;
                     sendDataPkt(clientSock, &clientSendPkt, nextSeq,
-                                HEADER_LENGTH + strlen(fileName) + 1, DATA_STORE);
+                                HEADER_LENGTH + strlen(argv[3]) + 1, DATA_STORE);
                     break;
                 }
                 else if (bytes_read < 0)

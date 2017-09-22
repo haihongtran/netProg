@@ -35,8 +35,6 @@
 #define DATA_SIZE       1400
 #define HEADER_LENGTH   8
 
-#define MAX_NAME_LEN    256
-
 typedef struct cmd_pkt
 {
     uint8_t     version;
