@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #define CLIENT_HELLO    0x0001
 #define SERVER_HELLO    0x0002
@@ -31,9 +32,10 @@
 #define STATIC_VERSION  0x04
 #define STATIC_USER_ID  0x08
 
-//TODO: decide this data size
-#define DATA_SIZE       1024
+#define DATA_SIZE       1400
 #define HEADER_LENGTH   8
+
+#define MAX_NAME_LEN    256
 
 typedef struct cmd_pkt
 {

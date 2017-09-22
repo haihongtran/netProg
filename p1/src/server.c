@@ -2,18 +2,17 @@
 
 int main(int argc, char const *argv[])
 {
-    int serverSock, clientSock;
+    int serverSock, clientSock, fd, optval = 1;
     struct sockaddr_in serverAddr, clientAddr;
     socklen_t clientAddrLen;
-    cmd_pkt serverSendCmdPkt;
+    cmd_pkt serverSendPkt;
     data_pkt serverRecvPkt;
     uint8_t* buffer = NULL;
     unsigned int bytes_read = 0;
     unsigned int dataLen;
     char* fileName = NULL;
-    int fd;
-    //TODO: consider using type bool of stdbool.h
-    int stored = 0;
+    bool fileStored = false;
+    bool storedError = false;
 
     /* Create socket descriptor */
     if ((serverSock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -21,7 +20,14 @@ int main(int argc, char const *argv[])
         perror("Failed to create a socket");
         return -1;
     }
-    //TODO: config socket to be used immediately, not to wait for timeout
+
+    /* Eliminate "Address already in use" error from bind */
+    if (setsockopt(serverSock, SOL_SOCKET, SO_REUSEADDR,
+                    (const void*) &optval, sizeof(int)) < 0)
+    {
+        perror("Cannot change options of server socket");
+        return -1;
+    }
 
     /* Bind the socket to a port */
     memset((char*) &serverAddr, 0, sizeof(serverAddr));
@@ -54,8 +60,8 @@ int main(int argc, char const *argv[])
     srand(time(NULL));
 
     /* Ininitilize static fields of application header */
-    serverSendCmdPkt.version  =   STATIC_VERSION;
-    serverSendCmdPkt.userId   =   STATIC_USER_ID;
+    serverSendPkt.version  =   STATIC_VERSION;
+    serverSendPkt.userId   =   STATIC_USER_ID;
 
     /* Start communication */
     while(1)
@@ -70,28 +76,41 @@ int main(int argc, char const *argv[])
         {
             case CLIENT_HELLO:
                 /* Construct SERVER_HELLO message */
-                serverSendCmdPkt.sequence   = htons(rand() % MAX_SEQUENCE);
-                serverSendCmdPkt.length     = htons(HEADER_LENGTH);
-                serverSendCmdPkt.command    = htons(SERVER_HELLO);
+                serverSendPkt.sequence   = htons(rand() % MAX_SEQUENCE);
+                serverSendPkt.length     = htons(HEADER_LENGTH);
+                serverSendPkt.command    = htons(SERVER_HELLO);
                 /* Send SERVER_HELLO message */
-                write(clientSock, &serverSendCmdPkt, HEADER_LENGTH);
+                write(clientSock, &serverSendPkt, HEADER_LENGTH);
                 break;
             case DATA_DELIVERY:
                 /* Calculate useful length of data */
                 dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Allocate more memory for buffer to store packet */
                 buffer = (uint8_t*) realloc(buffer, bytes_read + dataLen);
+                if ( buffer == NULL)
+                {
+                    perror("Cannot allocate more memory");
+                    /* Construct ERROR packet */
+                    tmp = ntohs(serverSendPkt.sequence) + 1;
+                    serverSendPkt.sequence   = htons(tmp);
+                    serverSendPkt.length     = htons(HEADER_LENGTH);
+                    serverSendPkt.command    = htons(ERROR);
+                    /* Send PKT_RECEIVED packet */
+                    write(clientSock, &serverSendPkt, HEADER_LENGTH);
+                    storedError = true;
+                    break;
+                }
                 /* Copy received data to buffer */
                 memcpy((void*)buffer + bytes_read, (void*)&serverRecvPkt.data, dataLen);
                 /* Increase the number of bytes read */
                 bytes_read += dataLen;
                 /* Construct PKT_RECEIVED packet */
-                tmp = ntohs(serverSendCmdPkt.sequence) + 1;
-                serverSendCmdPkt.sequence   = htons(tmp);
-                serverSendCmdPkt.length     = htons(HEADER_LENGTH);
-                serverSendCmdPkt.command    = htons(PKT_RECEIVED);
+                tmp = ntohs(serverSendPkt.sequence) + 1;
+                serverSendPkt.sequence   = htons(tmp);
+                serverSendPkt.length     = htons(HEADER_LENGTH);
+                serverSendPkt.command    = htons(PKT_RECEIVED);
                 /* Send PKT_RECEIVED packet */
-                write(clientSock, &serverSendCmdPkt, HEADER_LENGTH);
+                write(clientSock, &serverSendPkt, HEADER_LENGTH);
                 break;
             case DATA_STORE:
                 /* Calculate useful length of data */
@@ -102,28 +121,33 @@ int main(int argc, char const *argv[])
                 if ( (fd = open(fileName, O_WRONLY | O_CREAT, 0666)) < 0 )
                 {
                     /* Construct STORED_ERROR message and send */
-                    tmp = ntohs(serverSendCmdPkt.sequence) + 1;
-                    serverSendCmdPkt.sequence   = htons(tmp);
-                    serverSendCmdPkt.length     = htons(HEADER_LENGTH);
-                    serverSendCmdPkt.command    = htons(STORED_ERROR);
-                    perror("[ERROR 0x0008] Cannot creat new file for storing");
-                    close(clientSock);
-                    close(serverSock);
-                    return -1;
+                    tmp = ntohs(serverSendPkt.sequence) + 1;
+                    serverSendPkt.sequence   = htons(tmp);
+                    serverSendPkt.length     = htons(HEADER_LENGTH);
+                    serverSendPkt.command    = htons(STORED_ERROR);
+                    write(clientSock, &serverSendPkt, HEADER_LENGTH);
+                    printf("[ERROR 0x0008] Cannot creat new file for storing.\n");
+                    storedError = true;
+                    break;
                 }
                 write(fd, buffer, bytes_read);
                 close(fd);
                 free(buffer);
-                stored++;
-                //TODO: send message to confirm file stored
+                fileStored = true;
+                /* Construct FILE_STORED message and send */
+                tmp = ntohs(serverSendPkt.sequence) + 1;
+                serverSendPkt.sequence   = htons(tmp);
+                serverSendPkt.length     = htons(HEADER_LENGTH);
+                serverSendPkt.command    = htons(FILE_STORED);
+                write(clientSock, &serverSendPkt, HEADER_LENGTH);
                 break;
             case ERROR:
-                //TODO: handle the case ERROR code is received
+                printf("[ERROR 0x0005] Communication error.\n");
                 break;
             default:
                 break;
         }
-        if (stored)
+        if (fileStored || storedError)
             break;
     }
 
