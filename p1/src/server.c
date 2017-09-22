@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "utilities.h"
 
 int main(int argc, char const *argv[])
 {
@@ -11,8 +12,7 @@ int main(int argc, char const *argv[])
     unsigned int bytes_read = 0;
     unsigned int dataLen;
     char* fileName = NULL;
-    bool fileStored = false;
-    bool storedError = false;
+    bool fileStored = false, storedError = false, communicationError = false;
 
     /* Create socket descriptor */
     if ((serverSock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -66,7 +66,7 @@ int main(int argc, char const *argv[])
     /* Start communication */
     while(1)
     {
-        int tmp;
+        int nextSeq;
         if ( read(clientSock, &serverRecvPkt, sizeof(serverRecvPkt)) < 0 )
         {
             perror("Cannot read from socket");
@@ -75,79 +75,73 @@ int main(int argc, char const *argv[])
         switch ( ntohs(serverRecvPkt.command) )
         {
             case CLIENT_HELLO:
-                /* Construct SERVER_HELLO message */
-                serverSendPkt.sequence   = htons(rand() % MAX_SEQUENCE);
-                serverSendPkt.length     = htons(HEADER_LENGTH);
-                serverSendPkt.command    = htons(SERVER_HELLO);
-                /* Send SERVER_HELLO message */
-                write(clientSock, &serverSendPkt, HEADER_LENGTH);
+                /* Construct and send SERVER_HELLO */
+                sendCmdPkt(clientSock, &serverSendPkt, rand() * MAX_SEQUENCE,
+                            HEADER_LENGTH, SERVER_HELLO);
                 break;
             case DATA_DELIVERY:
-                /* Calculate useful length of data */
+                /* Calculate length of useful data */
                 dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Allocate more memory for buffer to store packet */
                 buffer = (uint8_t*) realloc(buffer, bytes_read + dataLen);
                 if ( buffer == NULL)
                 {
                     perror("Cannot allocate more memory");
-                    /* Construct ERROR packet */
-                    tmp = ntohs(serverSendPkt.sequence) + 1;
-                    serverSendPkt.sequence   = htons(tmp);
-                    serverSendPkt.length     = htons(HEADER_LENGTH);
-                    serverSendPkt.command    = htons(ERROR);
-                    /* Send PKT_RECEIVED packet */
-                    write(clientSock, &serverSendPkt, HEADER_LENGTH);
+                    /* Construct and send ERROR packet */
+                    nextSeq = ntohs(serverSendPkt.sequence) + 1;
+                    sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, ERROR);
                     storedError = true;
                     break;
                 }
                 /* Copy received data to buffer */
                 memcpy((void*)buffer + bytes_read, (void*)&serverRecvPkt.data, dataLen);
-                /* Increase the number of bytes read */
+                /* Increase the number of bytes read from client*/
                 bytes_read += dataLen;
-                /* Construct PKT_RECEIVED packet */
-                tmp = ntohs(serverSendPkt.sequence) + 1;
-                serverSendPkt.sequence   = htons(tmp);
-                serverSendPkt.length     = htons(HEADER_LENGTH);
-                serverSendPkt.command    = htons(PKT_RECEIVED);
-                /* Send PKT_RECEIVED packet */
-                write(clientSock, &serverSendPkt, HEADER_LENGTH);
+                /* Construct and send PKT_RECEIVED packet */
+                nextSeq = ntohs(serverSendPkt.sequence) + 1;
+                sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, PKT_RECEIVED);
                 break;
             case DATA_STORE:
-                /* Calculate useful length of data */
+                /* Calculate length of useful data */
                 dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Extract the file name from the received data */
                 fileName = (char*) malloc(dataLen * sizeof(char));
                 memcpy((void*)fileName, (void*)&serverRecvPkt.data, dataLen);
+                /* Create new file for writing */
                 if ( (fd = open(fileName, O_WRONLY | O_CREAT, 0666)) < 0 )
                 {
-                    /* Construct STORED_ERROR message and send */
-                    tmp = ntohs(serverSendPkt.sequence) + 1;
-                    serverSendPkt.sequence   = htons(tmp);
-                    serverSendPkt.length     = htons(HEADER_LENGTH);
-                    serverSendPkt.command    = htons(STORED_ERROR);
-                    write(clientSock, &serverSendPkt, HEADER_LENGTH);
-                    printf("[ERROR 0x0008] Cannot creat new file for storing.\n");
+                    perror("[ERROR 0x0008] Cannot create new file for storing");
                     storedError = true;
+                    /* Construct and send STORED_ERROR */
+                    nextSeq = ntohs(serverSendPkt.sequence) + 1;
+                    sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, STORED_ERROR);
                     break;
                 }
-                write(fd, buffer, bytes_read);
+                if ( write(fd, buffer, bytes_read) < 0 )
+                {
+                    perror("[ERROR 0x0008] Cannot write into the new file");
+                    storedError = true;
+                    /* Construct and send STORED_ERROR */
+                    nextSeq = ntohs(serverSendPkt.sequence) + 1;
+                    sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, STORED_ERROR);
+                    break;
+                }
                 close(fd);
                 free(buffer);
                 fileStored = true;
                 /* Construct FILE_STORED message and send */
-                tmp = ntohs(serverSendPkt.sequence) + 1;
-                serverSendPkt.sequence   = htons(tmp);
-                serverSendPkt.length     = htons(HEADER_LENGTH);
-                serverSendPkt.command    = htons(FILE_STORED);
-                write(clientSock, &serverSendPkt, HEADER_LENGTH);
+                nextSeq = ntohs(serverSendPkt.sequence) + 1;
+                sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, FILE_STORED);
                 break;
             case ERROR:
                 printf("[ERROR 0x0005] Communication error.\n");
+                communicationError = true;
                 break;
             default:
+                printf("Unrecognized command: 0x%04x\n", serverRecvPkt.command);
                 break;
         }
-        if (fileStored || storedError)
+        if (fileStored || storedError || communicationError)
             break;
     }
 

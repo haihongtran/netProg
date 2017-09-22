@@ -1,14 +1,12 @@
 #include "protocol.h"
+#include "utilities.h"
 
 int main(int argc, char const *argv[])
 {
     int clientSock, fd, bytes_read;
     struct sockaddr_in serverAddr;
-    socklen_t serverAddrLen;
-    data_pkt clientSendPkt;
-    data_pkt clientRecvPkt;
-    bool fileStored = false;
-    bool storedError = false;
+    data_pkt clientSendPkt, clientRecvPkt;
+    bool fileStored = false, storedError = false;
 
     if (argc != 4)
     {
@@ -35,8 +33,7 @@ int main(int argc, char const *argv[])
     serverAddr.sin_port         = htons(atoi(argv[2]));
     serverAddr.sin_addr.s_addr  = inet_addr(argv[1]);
 
-    serverAddrLen = sizeof(serverAddr);
-    if (connect(clientSock, (struct sockaddr*) &serverAddr, serverAddrLen) < 0)
+    if (connect(clientSock, (struct sockaddr*) &serverAddr, sizeof(serverAddr)) < 0)
     {
         perror("[ERROR 0x0005] Cannot connect to server");
         return -1;
@@ -45,30 +42,22 @@ int main(int argc, char const *argv[])
     /* Randomize seed to create a random initial sequence number */
     srand(time(NULL));
 
-    //TODO: create a sendPkt function which has arguments cmd, pkt_len, etc.
-    /* Construct CLIENT_HELLO message */
+    /* Initialize static fields of sending packet */
     clientSendPkt.version  = STATIC_VERSION;
     clientSendPkt.userId   = STATIC_USER_ID;
-    clientSendPkt.sequence = htons(rand() % MAX_SEQUENCE);
-    clientSendPkt.length   = htons(HEADER_LENGTH);
-    clientSendPkt.command  = htons(CLIENT_HELLO);
-
-    /* Send CLIENT_HELLO message */
-    write(clientSock, &clientSendPkt, HEADER_LENGTH);
+    /* Construct and send CLIENT_HELLO */
+    sendDataPkt(clientSock, &clientSendPkt, rand() * MAX_SEQUENCE,
+                HEADER_LENGTH, CLIENT_HELLO);
 
     while(1)
     {
-        int tmp;
+        int nextSeq;
         if ( read(clientSock, &clientRecvPkt, sizeof(clientRecvPkt)) < 0 )
         {
-            /* Construct ERROR message */
-            tmp = ntohs(clientSendPkt.sequence) + 1;
-            clientSendPkt.sequence  = htons(tmp);
-            clientSendPkt.length    = htons(HEADER_LENGTH);
-            clientSendPkt.command   = htons(ERROR);
-            /* Send ERROR message to server */
-            write(clientSock, &clientSendPkt, HEADER_LENGTH);
             perror("Cannot read from socket");
+            /* Construct and send ERROR message */
+            nextSeq = ntohs(clientSendPkt.sequence) + 1;
+            sendDataPkt(clientSock, &clientSendPkt, nextSeq, HEADER_LENGTH, ERROR);
             break;
         }
         switch ( ntohs(clientRecvPkt.command) )
@@ -77,23 +66,16 @@ int main(int argc, char const *argv[])
                 bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
                 if ( bytes_read < 0 )
                 {
-                    /* Construct ERROR message */
-                    tmp = ntohs(clientSendPkt.sequence) + 1;
-                    clientSendPkt.sequence  = htons(tmp);
-                    clientSendPkt.length    = htons(HEADER_LENGTH);
-                    clientSendPkt.command   = htons(ERROR);
-                    /* Send ERROR message to server */
-                    write(clientSock, &clientSendPkt, HEADER_LENGTH);
                     perror("Cannot read the file");
+                    /* Construct and send ERROR message */
+                    nextSeq = ntohs(clientSendPkt.sequence) + 1;
+                    sendDataPkt(clientSock, &clientSendPkt, nextSeq, HEADER_LENGTH, ERROR);
                     break;
                 }
-                /* Construct first DATA_DELIVERY packet */
-                tmp = ntohs(clientSendPkt.sequence) + 1;
-                clientSendPkt.sequence  = htons(tmp);
-                clientSendPkt.length    = htons(HEADER_LENGTH + bytes_read);
-                clientSendPkt.command   = htons(DATA_DELIVERY);
-                /* Send first DATA_DELIVERY packet to socket */
-                write(clientSock, &clientSendPkt, HEADER_LENGTH + bytes_read);
+                /* Construct and send first DATA_DELIVERY packet */
+                nextSeq = ntohs(clientSendPkt.sequence) + 1;
+                sendDataPkt(clientSock, &clientSendPkt, nextSeq,
+                            HEADER_LENGTH + bytes_read, DATA_DELIVERY);
                 break;
             case PKT_RECEIVED:
                 bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
@@ -101,39 +83,32 @@ int main(int argc, char const *argv[])
                 {
                     /* User enters file name */
                     char* fileName = (char*) malloc(MAX_NAME_LEN);
-                    printf("Enter file name: ");
+                    printf("Enter file name to store: ");
                     fgets(fileName, MAX_NAME_LEN, stdin);
-                    /* Remove trailing newline, if there */
+
+                    /* Remove trailing newline */
                     if ((strlen(fileName) > 0) && (fileName[strlen(fileName) - 1] == '\n'))
                         fileName[strlen(fileName) - 1] = '\0';
+
                     /* Construct and send DATA_STORE packet */
-                    tmp = ntohs(clientSendPkt.sequence) + 1;
-                    clientSendPkt.sequence  = htons(tmp);
-                    clientSendPkt.length    = htons(HEADER_LENGTH + strlen(fileName) + 1);
-                    clientSendPkt.command   = htons(DATA_STORE);
                     memcpy((void*) &clientSendPkt.data, fileName, strlen(fileName) + 1);
-                    write(clientSock, &clientSendPkt, HEADER_LENGTH + strlen(fileName) + 1);
+                    nextSeq = ntohs(clientSendPkt.sequence) + 1;
+                    sendDataPkt(clientSock, &clientSendPkt, nextSeq,
+                                HEADER_LENGTH + strlen(fileName) + 1, DATA_STORE);
                     break;
                 }
                 else if (bytes_read < 0)
                 {
                     perror("Cannot read the file");
-                    /* Construct ERROR message */
-                    tmp = ntohs(clientSendPkt.sequence) + 1;
-                    clientSendPkt.sequence  = htons(tmp);
-                    clientSendPkt.length    = htons(HEADER_LENGTH);
-                    clientSendPkt.command   = htons(ERROR);
-                    /* Send ERROR message to server */
-                    write(clientSock, &clientSendPkt, HEADER_LENGTH);
+                    /* Construct and send ERROR message */
+                    nextSeq = ntohs(clientSendPkt.sequence) + 1;
+                    sendDataPkt(clientSock, &clientSendPkt, nextSeq, HEADER_LENGTH, ERROR);
                     break;
                 }
-                /* Construct DATA_DELIVERY packet */
-                tmp = ntohs(clientSendPkt.sequence) + 1;
-                clientSendPkt.sequence  = htons(tmp);
-                clientSendPkt.length    = htons(HEADER_LENGTH + bytes_read);
-                clientSendPkt.command   = htons(DATA_DELIVERY);
-                /* Send DATA_DELIVERY packet to socket */
-                write(clientSock, &clientSendPkt, HEADER_LENGTH + bytes_read);
+                /* Construct and send DATA_DELIVERY packet */
+                nextSeq = ntohs(clientSendPkt.sequence) + 1;
+                sendDataPkt(clientSock, &clientSendPkt, nextSeq,
+                            HEADER_LENGTH + bytes_read, DATA_DELIVERY);
                 break;
             case ERROR:
                 printf("[ERROR 0x0005] Server's memory is full.\n");
@@ -148,6 +123,7 @@ int main(int argc, char const *argv[])
                 storedError = true;
                 break;
             default:
+                printf("Unrecognized command: 0x%04x\n", clientRecvPkt.command);
                 break;
         }
         if (fileStored || storedError)
