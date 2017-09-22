@@ -21,7 +21,6 @@
 #define ERROR           0x0005
 
 /* More commands from server */
-//TODO: explain these commands in readme.txt
 #define PKT_RECEIVED    0x0006
 #define FILE_STORED     0x0007
 #define STORED_ERROR    0x0008

@@ -102,7 +102,7 @@ int main(int argc, char const *argv[])
                             HEADER_LENGTH + bytes_read, DATA_DELIVERY);
                 break;
             case ERROR:
-                printf("[ERROR 0x0005] Server's memory is full.\n");
+                printf("[ERROR 0x0005] Server cannot store file to buffer.\n");
                 storedError = true;
                 break;
             case FILE_STORED:
