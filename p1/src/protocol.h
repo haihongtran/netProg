@@ -31,6 +31,7 @@
 
 //TODO: decide this data size
 #define DATA_SIZE       1024
+#define HEADER_LENGTH   8
 
 typedef struct cmd_pkt
 {

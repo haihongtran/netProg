@@ -6,8 +6,6 @@ int main(int argc, char const *argv[])
     int clientSock;
     struct sockaddr_in serverAddr;
     socklen_t serverAddrLen;
-    //TODO: can we combine cmd and data pkt into one?
-    cmd_pkt clientSendCmdPkt;
     data_pkt clientSendDataPkt;
     data_pkt clientRecvPkt;
     int bytes_read;
@@ -50,20 +48,14 @@ int main(int argc, char const *argv[])
     srand(time(NULL));
 
     /* Construct CLIENT_HELLO message */
-    clientSendCmdPkt.version  = STATIC_VERSION;
-    clientSendCmdPkt.userId   = STATIC_USER_ID;
-    clientSendCmdPkt.sequence = htons(rand() % MAX_SEQUENCE);
-    clientSendCmdPkt.length   = htons(sizeof(clientSendCmdPkt));
-    clientSendCmdPkt.command  = htons(CLIENT_HELLO);
-
-    /* Send CLIENT_HELLO message */
-    write(clientSock, &clientSendCmdPkt, sizeof(clientSendCmdPkt));
-
-    /* Ininitilize static fields of data packet*/
     clientSendDataPkt.version  = STATIC_VERSION;
     clientSendDataPkt.userId   = STATIC_USER_ID;
-    /* Set sequence number of sending data packet */
-    clientSendDataPkt.sequence = clientSendCmdPkt.sequence;
+    clientSendDataPkt.sequence = htons(rand() % MAX_SEQUENCE);
+    clientSendDataPkt.length   = htons(HEADER_LENGTH);
+    clientSendDataPkt.command  = htons(CLIENT_HELLO);
+
+    /* Send CLIENT_HELLO message */
+    write(clientSock, &clientSendDataPkt, HEADER_LENGTH);
 
     while(1)
     {
@@ -87,10 +79,10 @@ int main(int argc, char const *argv[])
                 /* Construct first DATA_DELIVERY packet */
                 int tmp = ntohs(clientSendDataPkt.sequence) + 1;
                 clientSendDataPkt.sequence  = htons(tmp);
-                clientSendDataPkt.length    = htons(sizeof(cmd_pkt) + bytes_read);
+                clientSendDataPkt.length    = htons(HEADER_LENGTH + bytes_read);
                 clientSendDataPkt.command   = htons(DATA_DELIVERY);
                 /* Send first DATA_DELIVERY packet to socket */
-                write(clientSock, &clientSendDataPkt, sizeof(cmd_pkt) + bytes_read);
+                write(clientSock, &clientSendDataPkt, HEADER_LENGTH + bytes_read);
                 break;
             case PKT_RECEIVED:
                 bytes_read = read(fd, &clientSendDataPkt.data, DATA_SIZE);
@@ -101,14 +93,14 @@ int main(int argc, char const *argv[])
                     /* Construct and send DATA_STORE packet */
                     tmp = ntohs(clientSendDataPkt.sequence) + 1;
                     clientSendDataPkt.sequence  = htons(tmp);
-                    // clientSendDataPkt.length    = htons(sizeof(cmd_pkt) + strlen(argv[3]));
-                    clientSendDataPkt.length    = htons(sizeof(cmd_pkt) + strlen(tmpName) + 1);
+                    // clientSendDataPkt.length    = htons(HEADER_LENGTH + strlen(argv[3]));
+                    clientSendDataPkt.length    = htons(HEADER_LENGTH + strlen(tmpName) + 1);
                     clientSendDataPkt.command   = htons(DATA_STORE);
                     // memset((char*) &clientSendDataPkt.data, 0, sizeof(clientSendDataPkt.data));
                     // memcpy((void*) &clientSendDataPkt.data, argv[3], strlen(argv[3]));
                     memcpy((void*) &clientSendDataPkt.data, tmpName, strlen(tmpName) + 1);
-                    // write(clientSock, &clientSendDataPkt, sizeof(cmd_pkt) + strlen(argv[3]));
-                    write(clientSock, &clientSendDataPkt, sizeof(cmd_pkt) + strlen(tmpName) + 1);
+                    // write(clientSock, &clientSendDataPkt, HEADER_LENGTH + strlen(argv[3]));
+                    write(clientSock, &clientSendDataPkt, HEADER_LENGTH + strlen(tmpName) + 1);
                     //TODO: instead of send file and then quit, wait for returned message from server to confirm stored or not
                     read_file_complete++;
                     break;
@@ -122,10 +114,10 @@ int main(int argc, char const *argv[])
                 /* Construct DATA_DELIVERY packet */
                 tmp = ntohs(clientSendDataPkt.sequence) + 1;
                 clientSendDataPkt.sequence  = htons(tmp);
-                clientSendDataPkt.length    = htons(sizeof(cmd_pkt) + bytes_read);
+                clientSendDataPkt.length    = htons(HEADER_LENGTH + bytes_read);
                 clientSendDataPkt.command   = htons(DATA_DELIVERY);
                 /* Send DATA_DELIVERY packet to socket */
-                write(clientSock, &clientSendDataPkt, sizeof(cmd_pkt) + bytes_read);
+                write(clientSock, &clientSendDataPkt, HEADER_LENGTH + bytes_read);
                 break;
             case ERROR:
                 break;

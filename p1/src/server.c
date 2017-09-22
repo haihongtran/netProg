@@ -70,14 +70,14 @@ int main(int argc, char const *argv[])
             case CLIENT_HELLO:
                 /* Construct SERVER_HELLO message */
                 serverSendCmdPkt.sequence   = htons(rand() % MAX_SEQUENCE);
-                serverSendCmdPkt.length     = htons(sizeof(serverSendCmdPkt));
+                serverSendCmdPkt.length     = htons(HEADER_LENGTH);
                 serverSendCmdPkt.command    = htons(SERVER_HELLO);
                 /* Send SERVER_HELLO message */
-                write(clientSock, &serverSendCmdPkt, sizeof(serverSendCmdPkt));
+                write(clientSock, &serverSendCmdPkt, HEADER_LENGTH);
                 break;
             case DATA_DELIVERY:
                 /* Calculate useful length of data */
-                dataLen = ntohs(serverRecvPkt.length) - sizeof(serverSendCmdPkt);
+                dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Allocate more memory for buffer to store packet */
                 buffer = (uint8_t*) realloc(buffer, bytes_read + dataLen);
                 /* Copy received data to buffer */
@@ -87,14 +87,14 @@ int main(int argc, char const *argv[])
                 /* Construct PKT_RECEIVED packet */
                 int tmp = ntohs(serverSendCmdPkt.sequence) + 1;
                 serverSendCmdPkt.sequence   = htons(tmp);
-                serverSendCmdPkt.length     = htons(sizeof(serverSendCmdPkt));
+                serverSendCmdPkt.length     = htons(HEADER_LENGTH);
                 serverSendCmdPkt.command    = htons(PKT_RECEIVED);
                 /* Send PKT_RECEIVED packet */
-                write(clientSock, &serverSendCmdPkt, sizeof(serverSendCmdPkt));
+                write(clientSock, &serverSendCmdPkt, HEADER_LENGTH);
                 break;
             case DATA_STORE:
                 /* Calculate useful length of data */
-                dataLen = ntohs(serverRecvPkt.length) - sizeof(serverSendCmdPkt);
+                dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Extract the file name from the received data */
                 fileName = (char*) malloc(dataLen * sizeof(char));
                 memcpy((void*)fileName, (void*)&serverRecvPkt.data, dataLen);
