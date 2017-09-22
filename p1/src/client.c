@@ -39,14 +39,14 @@ int main(int argc, char const *argv[])
     serverAddrLen = sizeof(serverAddr);
     if (connect(clientSock, (struct sockaddr*) &serverAddr, serverAddrLen) < 0)
     {
-        //TODO: display ERROR code
-        perror("Connecting failed");
+        perror("[ERROR 0x0005] Cannot connect to server");
         return -1;
     }
 
     /* Randomize seed to create a random initial sequence number */
     srand(time(NULL));
 
+    //TODO: create a sendPkt function which has arguments cmd, pkt_len, etc.
     /* Construct CLIENT_HELLO message */
     clientSendDataPkt.version  = STATIC_VERSION;
     clientSendDataPkt.userId   = STATIC_USER_ID;
@@ -62,7 +62,13 @@ int main(int argc, char const *argv[])
         int tmp;
         if ( read(clientSock, &clientRecvPkt, sizeof(clientRecvPkt)) < 0 )
         {
-            //TODO: send ERROR message to server
+            /* Construct ERROR message */
+            tmp = ntohs(clientSendDataPkt.sequence) + 1;
+            clientSendDataPkt.sequence  = htons(tmp);
+            clientSendDataPkt.length    = htons(HEADER_LENGTH);
+            clientSendDataPkt.command   = htons(ERROR);
+            /* Send ERROR message to server */
+            write(clientSock, &clientSendDataPkt, HEADER_LENGTH);
             perror("Cannot read from socket");
             break;
         }
@@ -72,12 +78,18 @@ int main(int argc, char const *argv[])
                 bytes_read = read(fd, &clientSendDataPkt.data, DATA_SIZE);
                 if ( bytes_read < 0 )
                 {
-                    //TODO: error handling: if error, send error message to server
+                    /* Construct ERROR message */
+                    tmp = ntohs(clientSendDataPkt.sequence) + 1;
+                    clientSendDataPkt.sequence  = htons(tmp);
+                    clientSendDataPkt.length    = htons(HEADER_LENGTH);
+                    clientSendDataPkt.command   = htons(ERROR);
+                    /* Send ERROR message to server */
+                    write(clientSock, &clientSendDataPkt, HEADER_LENGTH);
                     perror("Cannot read the file");
                     break;
                 }
                 /* Construct first DATA_DELIVERY packet */
-                int tmp = ntohs(clientSendDataPkt.sequence) + 1;
+                tmp = ntohs(clientSendDataPkt.sequence) + 1;
                 clientSendDataPkt.sequence  = htons(tmp);
                 clientSendDataPkt.length    = htons(HEADER_LENGTH + bytes_read);
                 clientSendDataPkt.command   = htons(DATA_DELIVERY);
@@ -107,7 +119,13 @@ int main(int argc, char const *argv[])
                 }
                 else if (bytes_read < 0)
                 {
-                    //TODO: error handling: if error, send error message to server
+                    /* Construct ERROR message */
+                    tmp = ntohs(clientSendDataPkt.sequence) + 1;
+                    clientSendDataPkt.sequence  = htons(tmp);
+                    clientSendDataPkt.length    = htons(HEADER_LENGTH);
+                    clientSendDataPkt.command   = htons(ERROR);
+                    /* Send ERROR message to server */
+                    write(clientSock, &clientSendDataPkt, HEADER_LENGTH);
                     perror("Cannot read the file");
                     break;
                 }
@@ -120,6 +138,7 @@ int main(int argc, char const *argv[])
                 write(clientSock, &clientSendDataPkt, HEADER_LENGTH + bytes_read);
                 break;
             case ERROR:
+                //TODO:
                 break;
             default:
                 break;

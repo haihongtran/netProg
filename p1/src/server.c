@@ -46,7 +46,7 @@ int main(int argc, char const *argv[])
     clientSock = accept(serverSock, (struct sockaddr*) &clientAddr, &clientAddrLen);
     if (clientSock < 0)
     {
-        perror("Accepting failed");
+        perror("[ERROR 0x0005] Cannot accept new client");
         return -1;
     }
 
@@ -60,6 +60,7 @@ int main(int argc, char const *argv[])
     /* Start communication */
     while(1)
     {
+        int tmp;
         if ( read(clientSock, &serverRecvPkt, sizeof(serverRecvPkt)) < 0 )
         {
             perror("Cannot read from socket");
@@ -85,7 +86,7 @@ int main(int argc, char const *argv[])
                 /* Increase the number of bytes read */
                 bytes_read += dataLen;
                 /* Construct PKT_RECEIVED packet */
-                int tmp = ntohs(serverSendCmdPkt.sequence) + 1;
+                tmp = ntohs(serverSendCmdPkt.sequence) + 1;
                 serverSendCmdPkt.sequence   = htons(tmp);
                 serverSendCmdPkt.length     = htons(HEADER_LENGTH);
                 serverSendCmdPkt.command    = htons(PKT_RECEIVED);
@@ -100,8 +101,12 @@ int main(int argc, char const *argv[])
                 memcpy((void*)fileName, (void*)&serverRecvPkt.data, dataLen);
                 if ( (fd = open(fileName, O_WRONLY | O_CREAT, 0666)) < 0 )
                 {
-                    //TODO: send error message back
-                    perror("Cannot creat new file");
+                    /* Construct STORED_ERROR message and send */
+                    tmp = ntohs(serverSendCmdPkt.sequence) + 1;
+                    serverSendCmdPkt.sequence   = htons(tmp);
+                    serverSendCmdPkt.length     = htons(HEADER_LENGTH);
+                    serverSendCmdPkt.command    = htons(STORED_ERROR);
+                    perror("[ERROR 0x0008] Cannot creat new file for storing");
                     close(clientSock);
                     close(serverSock);
                     return -1;
