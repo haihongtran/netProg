@@ -13,7 +13,16 @@ II. How to run the program
     4. Run the server
     5. Run the client following this format './client serverIp 12345 fileName'
 
-III. Other things
+III. Scenario
+    1. Run the server
+    2. Run the client
+    3. After the TCP connection is set up, client sends CLIENT_HELLO message to server, then server replies with SERVER_HELLO message
+    4. Client uses DATA_DELIVERY message to send the required file in many packets
+    5. For each DATA_DELIVERY packet received from client, server replies with a PKT_RECEIVED message
+    6. When file transfer is complete, client sends DATA_STORE message with the file name
+    7. After storing file successfully, server sends a FILE_STORED message back to client
+
+IV. Other things
     - To clean the binary files, do step 1, 2, then type 'make clean' and press Enter
     - Besides text file, the program can transfer other file types as well
     - Transfered file size can be larger than 4 MBs
