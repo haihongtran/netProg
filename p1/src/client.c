@@ -3,14 +3,14 @@
 
 int main(int argc, char const *argv[])
 {
-    int clientSock, fd, bytes_read;
+    int clientSock, fd, bytes_read, nextSeq;
     struct sockaddr_in serverAddr;
     data_pkt clientSendPkt, clientRecvPkt;
     bool fileStored = false, storedError = false;
 
     if (argc != 4)
     {
-        printf("Please use \'./client server_ip port_number transfer_file\'\n");
+        printf("Please use \'./client server_ip port_number file_name_with_no_space\'\n");
         return -1;
     }
 
@@ -51,7 +51,6 @@ int main(int argc, char const *argv[])
 
     while(1)
     {
-        int nextSeq;
         if ( read(clientSock, &clientRecvPkt, sizeof(clientRecvPkt)) < 0 )
         {
             perror("Cannot read from socket");

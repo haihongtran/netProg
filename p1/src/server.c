@@ -3,7 +3,7 @@
 
 int main(int argc, char const *argv[])
 {
-    int serverSock, clientSock, fd, optval = 1;
+    int serverSock, clientSock, fd, nextSeq, optval = 1;
     struct sockaddr_in serverAddr, clientAddr;
     socklen_t clientAddrLen;
     cmd_pkt serverSendPkt;
@@ -66,7 +66,6 @@ int main(int argc, char const *argv[])
     /* Start communication */
     while(1)
     {
-        int nextSeq;
         if ( read(clientSock, &serverRecvPkt, sizeof(serverRecvPkt)) < 0 )
         {
             perror("Cannot read from socket");

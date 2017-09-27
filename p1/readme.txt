@@ -24,5 +24,4 @@ III. Scenario
 
 IV. Other things
     - To clean the binary files, do step 1, 2, then type 'make clean' and press Enter
-    - Besides text file, the program can transfer other file types as well
     - Transfered file size can be larger than 4 MBs
