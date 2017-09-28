@@ -8,12 +8,14 @@ int main(int argc, char const *argv[])
     data_pkt clientSendPkt, clientRecvPkt;
     bool fileStored = false, storedError = false;
 
+    /* Check command-line arguments */
     if (argc != 4)
     {
         printf("Please use \'./client server_ip port_number file_name_with_no_space\'\n");
         return -1;
     }
 
+    /* Open required file */
     if ( (fd = open(argv[3], O_RDONLY)) < 0 )
     {
         perror("Cannot open file");
@@ -51,6 +53,7 @@ int main(int argc, char const *argv[])
 
     while(1)
     {
+        /* Read packet from server */
         if ( read(clientSock, &clientRecvPkt, sizeof(clientRecvPkt)) < 0 )
         {
             perror("Cannot read from socket");
@@ -59,9 +62,11 @@ int main(int argc, char const *argv[])
             sendDataPkt(clientSock, &clientSendPkt, nextSeq, HEADER_LENGTH, ERROR);
             break;
         }
+        /* Check command of server */
         switch ( ntohs(clientRecvPkt.command) )
         {
             case SERVER_HELLO:
+                /* Read data from file */
                 bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
                 if ( bytes_read < 0 )
                 {
@@ -77,6 +82,7 @@ int main(int argc, char const *argv[])
                             HEADER_LENGTH + bytes_read, DATA_DELIVERY);
                 break;
             case PKT_RECEIVED:
+                /* Read data from file */
                 bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
                 if (bytes_read == 0) // EOF
                 {
