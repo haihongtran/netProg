@@ -31,7 +31,7 @@
 #define STATIC_VERSION  0x04
 #define STATIC_USER_ID  0x08
 
-#define DATA_SIZE       1400
+#define DATA_SIZE       4022
 #define HEADER_LENGTH   8
 
 typedef struct cmd_pkt

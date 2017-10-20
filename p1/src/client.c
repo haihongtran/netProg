@@ -1,10 +1,9 @@
-#include "protocol.h"
-#include "utilities.h"
+#include "client_utilities.h"
+#include "common_utilities.h"
 
 int main(int argc, char const *argv[])
 {
     int clientSock, fd, bytes_read, nextSeq;
-    struct sockaddr_in serverAddr;
     data_pkt clientSendPkt, clientRecvPkt;
     bool fileStored = false, storedError = false;
 
@@ -22,24 +21,8 @@ int main(int argc, char const *argv[])
         return -1;
     }
 
-    /* Create socket descriptor */
-    if ( (clientSock = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
-    {
-        perror("Failed to create a socket");
-        return -1;
-    }
-
-    /* Connect to server */
-    memset((char*) &serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family       = AF_INET;
-    serverAddr.sin_port         = htons(atoi(argv[2]));
-    serverAddr.sin_addr.s_addr  = inet_addr(argv[1]);
-
-    if (connect(clientSock, (struct sockaddr*) &serverAddr, sizeof(serverAddr)) < 0)
-    {
-        perror("[ERROR 0x0005] Cannot connect to server");
-        return -1;
-    }
+    /* Open and connect client sock */
+    clientSock = openClientSock(argv[1], atoi(argv[2]));
 
     /* Randomize seed to create a random initial sequence number */
     srand(time(NULL));
