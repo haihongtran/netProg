@@ -23,6 +23,8 @@ int main(int argc, char const *argv[])
 
     /* Open and connect client sock */
     clientSock = openClientSock(argv[1], atoi(argv[2]));
+    if ( clientSock < 0 )
+        return -1;
 
     /* Randomize seed to create a random initial sequence number */
     srand(time(NULL));
