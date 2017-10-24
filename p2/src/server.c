@@ -66,7 +66,7 @@ int main(int argc, char const *argv[])
                     break;
                 }
                 /* Copy received data to buffer */
-                memcpy((void*)buffer + bytes_read, (void*)&serverRecvPkt.data, dataLen);
+                memcpy((void*)buffer + bytes_read, (void*)serverRecvPkt.data, dataLen);
                 /* Increase the number of bytes read from client*/
                 bytes_read += dataLen;
                 /* Construct and send PKT_RECEIVED packet */
@@ -78,7 +78,7 @@ int main(int argc, char const *argv[])
                 dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Extract the file name from the received data */
                 fileName = (char*) malloc(dataLen * sizeof(char));
-                memcpy((void*)fileName, (void*)&serverRecvPkt.data, dataLen);
+                memcpy((void*)fileName, (void*)serverRecvPkt.data, dataLen);
                 /* Create new file for writing */
                 if ( (fd = open(fileName, O_WRONLY | O_CREAT, 0666)) < 0 )
                 {

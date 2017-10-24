@@ -3,27 +3,22 @@
 
 int main(int argc, char const *argv[])
 {
-    int clientSock, fd, bytes_read, nextSeq;
+    int clientSock, nextSeq;
     data_pkt clientSendPkt;
     cmd_pkt clientRecvPkt;
     bool fileStored = false, storedError = false;
+    const char* msg = "I am thread #1";
+    const char* fileName = "1.txt";
 
     /* Check command-line arguments */
-    if (argc != 4)
+    if (argc != 3)
     {
-        printf("Please use \'./client server_ip port_number file_name_with_no_space\'\n");
-        return -1;
-    }
-
-    /* Open required file */
-    if ( (fd = open(argv[3], O_RDONLY)) < 0 )
-    {
-        perror("Cannot open file");
+        printf("Please use \'./client [server_ip] [number_of_request]\'\n");
         return -1;
     }
 
     /* Open and connect client sock */
-    clientSock = openClientSock(argv[1], atoi(argv[2]));
+    clientSock = openClientSock(argv[1], PORT_NUMBER);
     if ( clientSock < 0 )
         return -1;
 
@@ -52,45 +47,22 @@ int main(int argc, char const *argv[])
         switch ( ntohs(clientRecvPkt.command) )
         {
             case SERVER_HELLO:
-                /* Read data from file */
-                bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
-                if ( bytes_read < 0 )
-                {
-                    perror("Cannot read the file");
-                    /* Construct and send ERROR message */
-                    nextSeq = ntohs(clientSendPkt.sequence) + 1;
-                    sendDataPkt(clientSock, &clientSendPkt, nextSeq, HEADER_LENGTH, ERROR);
-                    break;
-                }
-                /* Construct and send first DATA_DELIVERY packet */
-                nextSeq = ntohs(clientSendPkt.sequence) + 1;
-                sendDataPkt(clientSock, &clientSendPkt, nextSeq,
-                            HEADER_LENGTH + bytes_read, DATA_DELIVERY);
-                break;
-            case PKT_RECEIVED:
-                /* Read data from file */
-                bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
-                if (bytes_read == 0) // EOF
-                {
-                    /* Construct and send DATA_STORE packet */
-                    memcpy((void*) &clientSendPkt.data, argv[3], strlen(argv[3]) + 1);
-                    nextSeq = ntohs(clientSendPkt.sequence) + 1;
-                    sendDataPkt(clientSock, &clientSendPkt, nextSeq,
-                                HEADER_LENGTH + strlen(argv[3]) + 1, DATA_STORE);
-                    break;
-                }
-                else if (bytes_read < 0)
-                {
-                    perror("Cannot read the file");
-                    /* Construct and send ERROR message */
-                    nextSeq = ntohs(clientSendPkt.sequence) + 1;
-                    sendDataPkt(clientSock, &clientSendPkt, nextSeq, HEADER_LENGTH, ERROR);
-                    break;
-                }
+                /* Copy msg into data field of send packet */
+                strcpy(clientSendPkt.data, msg);
+
                 /* Construct and send DATA_DELIVERY packet */
                 nextSeq = ntohs(clientSendPkt.sequence) + 1;
                 sendDataPkt(clientSock, &clientSendPkt, nextSeq,
-                            HEADER_LENGTH + bytes_read, DATA_DELIVERY);
+                            HEADER_LENGTH + strlen(msg), DATA_DELIVERY);
+                break;
+            case PKT_RECEIVED:
+                /* Copy file name into data field of send packet */
+                strcpy(clientSendPkt.data, fileName);
+
+                /* Construct and send DATA_STORE packet */
+                nextSeq = ntohs(clientSendPkt.sequence) + 1;
+                sendDataPkt(clientSock, &clientSendPkt, nextSeq,
+                            HEADER_LENGTH + strlen(fileName), DATA_STORE);
                 break;
             case ERROR:
                 printf("[ERROR 0x0005] Server cannot store file to buffer.\n");
@@ -112,7 +84,6 @@ int main(int argc, char const *argv[])
             break;
     }
 
-    close(fd);
     close(clientSock);
     return 0;
 }
