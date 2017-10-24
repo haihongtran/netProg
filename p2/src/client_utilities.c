@@ -26,19 +26,33 @@ int openClientSock(const char* ipAddr, int portNum)
     return clientSock;
 }
 
-int clientSendFile(const char* ipAddr)
+void* clientSendFile(void* arg)
 {
+    argStruct* threadArg = (argStruct*) arg;
     int clientSock, nextSeq;
     data_pkt clientSendPkt;
     cmd_pkt clientRecvPkt;
     bool fileStored = false, storedError = false;
-    const char* msg = "I am thread #1";
-    const char* fileName = "1.txt";
+    char threadNum[7], fileName[10], message[20];
+
+    /* Thread reaps itself after termination */
+    pthread_detach(pthread_self());
 
     /* Open and connect client sock */
-    clientSock = openClientSock(ipAddr, PORT_NUMBER);
+    clientSock = openClientSock(threadArg->ipAddr, PORT_NUMBER);
     if ( clientSock < 0 )
-        return -1;
+        return NULL;
+
+    /* Convert thread number from integer into a string and store */
+    snprintf(threadNum, sizeof(threadNum), "%u", threadArg->threadNum);
+
+    /* Construct data to send */
+    strcpy(message, "I am thread #");
+    strcat(message, threadNum);
+
+    /* Construct file name to send */
+    strcpy(fileName, threadNum);
+    strcat(fileName, ".txt");
 
     /* Randomize seed to create a random initial sequence number */
     srand(time(NULL));
@@ -66,13 +80,13 @@ int clientSendFile(const char* ipAddr)
         switch ( ntohs(clientRecvPkt.command) )
         {
             case SERVER_HELLO:
-                /* Copy msg into data field of send packet */
-                strcpy(clientSendPkt.data, msg);
+                /* Copy message into data field of send packet */
+                strcpy(clientSendPkt.data, message);
 
                 /* Construct and send DATA_DELIVERY packet */
                 nextSeq = ntohs(clientSendPkt.sequence) + 1;
                 sendDataPkt(clientSock, &clientSendPkt, nextSeq,
-                            HEADER_LENGTH + strlen(msg), DATA_DELIVERY);
+                            HEADER_LENGTH + strlen(message), DATA_DELIVERY);
                 break;
             case PKT_RECEIVED:
                 /* Copy file name into data field of send packet */
@@ -81,14 +95,13 @@ int clientSendFile(const char* ipAddr)
                 /* Construct and send DATA_STORE packet */
                 nextSeq = ntohs(clientSendPkt.sequence) + 1;
                 sendDataPkt(clientSock, &clientSendPkt, nextSeq,
-                            HEADER_LENGTH + strlen(fileName), DATA_STORE);
+                            HEADER_LENGTH + strlen(fileName) + 1, DATA_STORE);
                 break;
             case ERROR:
                 printf("[ERROR 0x0005] Server cannot store data to buffer.\n");
                 storedError = true;
                 break;
             case FILE_STORED:
-                printf("Data is successfully transfered and stored.\n");
                 fileStored = true;
                 break;
             case STORED_ERROR:
@@ -104,5 +117,5 @@ int clientSendFile(const char* ipAddr)
     }
 
     close(clientSock);
-    return 0;
+    return NULL;
 }

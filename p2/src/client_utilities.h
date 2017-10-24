@@ -1,8 +1,17 @@
 #ifndef __CLIENT_H__
 #define __CLIENT_H__
 
+#include <pthread.h>
+
 #include "protocol.h"
 #include "common_utilities.h"
+
+/* Struct of arguments for thread function */
+typedef struct argStruct
+{
+    const char* ipAddr;
+    unsigned int threadNum;
+} argStruct;
 
 /*
  * Function: openClientSock()
@@ -16,6 +25,6 @@ int openClientSock(const char* ipAddr, int portNum);
  * Client connects and sends text to server
  * Return -1 if the sending fails
  */
-int clientSendFile(const char* ipAddr);
+void* clientSendFile(void* arg);
 
 #endif  /*__CLIENT_H__*/
