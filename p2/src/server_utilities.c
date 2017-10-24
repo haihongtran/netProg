@@ -143,3 +143,11 @@ void handleClientRequest(int clientSock)
             break;
     }
 }
+
+void sigchldHandler(int sig)
+{
+    printf("SIGCHLD handler is working...\n");
+    while ( waitpid(-1, 0, WNOHANG) > 0 )
+        ;
+    return;
+}

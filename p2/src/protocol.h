@@ -10,10 +10,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <stdbool.h>
 
+/* Required commands */
 #define CLIENT_HELLO    0x0001
 #define SERVER_HELLO    0x0002
 #define DATA_DELIVERY   0x0003

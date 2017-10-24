@@ -2,10 +2,9 @@ MAKE_DIR = $(shell pwd)
 SRC_DIR = $(MAKE_DIR)/src
 BIN_DIR = $(MAKE_DIR)/bin
 
-all: server client
-	rm $(SRC_DIR)/*.o
+all: multi_server client
 
-server: $(SRC_DIR)/server.c $(SRC_DIR)/server_utilities.o $(SRC_DIR)/common_utilities.o
+multi_server: $(SRC_DIR)/multi_server.c $(SRC_DIR)/server_utilities.o $(SRC_DIR)/common_utilities.o
 	$(CC) $^ -o $(BIN_DIR)/$@
 
 client: $(SRC_DIR)/client.c $(SRC_DIR)/client_utilities.o $(SRC_DIR)/common_utilities.o
@@ -15,4 +14,5 @@ client: $(SRC_DIR)/client.c $(SRC_DIR)/client_utilities.o $(SRC_DIR)/common_util
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 clean:
+	rm $(SRC_DIR)/*.o
 	rm $(BIN_DIR)/*
