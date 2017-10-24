@@ -84,15 +84,15 @@ int clientSendFile(const char* ipAddr)
                             HEADER_LENGTH + strlen(fileName), DATA_STORE);
                 break;
             case ERROR:
-                printf("[ERROR 0x0005] Server cannot store file to buffer.\n");
+                printf("[ERROR 0x0005] Server cannot store data to buffer.\n");
                 storedError = true;
                 break;
             case FILE_STORED:
-                printf("The requested file is successfully transfered and stored.\n");
+                printf("Data is successfully transfered and stored.\n");
                 fileStored = true;
                 break;
             case STORED_ERROR:
-                printf("The requested file cannot be stored.\n");
+                printf("Server cannot store requested data.\n");
                 storedError = true;
                 break;
             default:
