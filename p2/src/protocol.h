@@ -53,4 +53,4 @@ typedef struct data_pkt
     uint8_t     data[DATA_SIZE];
 } data_pkt;
 
-#endif
+#endif  /*__PROTOCOL_H__*/

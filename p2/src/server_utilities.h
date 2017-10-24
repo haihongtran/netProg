@@ -7,4 +7,4 @@
 
 int openServerSock(int portNum);
 
-#endif // __SERVER_H__
+#endif  /*__SERVER_H__*/
