@@ -4,7 +4,8 @@
 int main(int argc, char const *argv[])
 {
     int clientSock, fd, bytes_read, nextSeq;
-    data_pkt clientSendPkt, clientRecvPkt;
+    data_pkt clientSendPkt;
+    cmd_pkt clientRecvPkt;
     bool fileStored = false, storedError = false;
 
     /* Check command-line arguments */
