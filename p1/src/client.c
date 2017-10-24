@@ -53,7 +53,7 @@ int main(int argc, char const *argv[])
         {
             case SERVER_HELLO:
                 /* Read data from file */
-                bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
+                bytes_read = read(fd, clientSendPkt.data, DATA_SIZE);
                 if ( bytes_read < 0 )
                 {
                     perror("Cannot read the file");
@@ -69,11 +69,11 @@ int main(int argc, char const *argv[])
                 break;
             case PKT_RECEIVED:
                 /* Read data from file */
-                bytes_read = read(fd, &clientSendPkt.data, DATA_SIZE);
+                bytes_read = read(fd, clientSendPkt.data, DATA_SIZE);
                 if (bytes_read == 0) // EOF
                 {
                     /* Construct and send DATA_STORE packet */
-                    memcpy((void*) &clientSendPkt.data, argv[3], strlen(argv[3]) + 1);
+                    memcpy((void*) clientSendPkt.data, argv[3], strlen(argv[3]) + 1);
                     nextSeq = ntohs(clientSendPkt.sequence) + 1;
                     sendDataPkt(clientSock, &clientSendPkt, nextSeq,
                                 HEADER_LENGTH + strlen(argv[3]) + 1, DATA_STORE);
