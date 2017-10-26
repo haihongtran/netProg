@@ -3,9 +3,12 @@ SRC_DIR = $(MAKE_DIR)/src
 BIN_DIR = $(MAKE_DIR)/bin
 P_THREAD = -pthread
 
-all: multi_server client
+all: select_server multi_server client
 
-multi_server: $(SRC_DIR)/multi_server.c $(SRC_DIR)/server_utilities.o $(SRC_DIR)/common_utilities.o
+select_server: $(SRC_DIR)/select_server.c $(SRC_DIR)/select_server_utilities.o $(SRC_DIR)/common_utilities.o
+	$(CC) $^ -o $(BIN_DIR)/$@
+
+multi_server: $(SRC_DIR)/multi_server.c $(SRC_DIR)/multi_server_utilities.o $(SRC_DIR)/common_utilities.o
 	$(CC) $^ -o $(BIN_DIR)/$@
 
 client: $(SRC_DIR)/client.c $(SRC_DIR)/client_utilities.o $(SRC_DIR)/common_utilities.o

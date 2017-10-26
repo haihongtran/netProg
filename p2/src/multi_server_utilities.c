@@ -1,4 +1,4 @@
-#include "server_utilities.h"
+#include "multi_server_utilities.h"
 
 int openServerSock(int portNum)
 {
@@ -73,7 +73,7 @@ void handleClientRequest(int clientSock)
         {
             case CLIENT_HELLO:
                 /* Construct and send SERVER_HELLO */
-                sendCmdPkt(clientSock, &serverSendPkt, rand() * MAX_SEQUENCE,
+                sendCmdPkt(clientSock, &serverSendPkt, rand() % MAX_SEQUENCE,
                             HEADER_LENGTH, SERVER_HELLO);
                 break;
             case DATA_DELIVERY:

@@ -33,6 +33,7 @@
 #define DATA_SIZE       4022
 #define HEADER_LENGTH   8
 
+/* Command packet structure */
 typedef struct cmd_pkt
 {
     uint8_t     version;
@@ -42,6 +43,7 @@ typedef struct cmd_pkt
     uint16_t    command;
 } cmd_pkt;
 
+/* Data packet structure */
 typedef struct data_pkt
 {
     uint8_t     version;

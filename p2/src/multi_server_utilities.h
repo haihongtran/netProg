@@ -1,10 +1,9 @@
-#ifndef __SERVER_H__
-#define __SERVER_H__
+#ifndef __MULTI_SERVER_H__
+#define __MULTI_SERVER_H__
 
 #include <signal.h>
 #include <sys/wait.h>
 
-#include "protocol.h"
 #include "common_utilities.h"
 
 #define LISTENQ 1024
@@ -29,4 +28,4 @@ void handleClientRequest(int clientSock);
  */
 void sigchldHandler(int sig);
 
-#endif  /*__SERVER_H__*/
+#endif  /*__MULTI_SERVER_H__*/

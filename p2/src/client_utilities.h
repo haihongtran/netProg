@@ -3,7 +3,6 @@
 
 #include <pthread.h>
 
-#include "protocol.h"
 #include "common_utilities.h"
 
 /* Struct of arguments for thread function */

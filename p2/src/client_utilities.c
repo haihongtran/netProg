@@ -62,7 +62,7 @@ void* clientSendFile(void* arg)
     clientSendPkt.userId   = STATIC_USER_ID;
 
     /* Construct and send CLIENT_HELLO */
-    sendDataPkt(clientSock, &clientSendPkt, rand() * MAX_SEQUENCE,
+    sendDataPkt(clientSock, &clientSendPkt, rand() % MAX_SEQUENCE,
                 HEADER_LENGTH, CLIENT_HELLO);
 
     while(1)

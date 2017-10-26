@@ -5,7 +5,7 @@ int main(int argc, char const *argv[])
     pthread_t tid;          /* Thread ID */
     argStruct threadArgs;   /* Thread arguments */
     unsigned int numOfThread = atoi(argv[2]);   /* Number of requests */
-    unsigned int usecs = 100000;    /* 100ms */
+    unsigned int usecs = 100000;    /* 100000us = 100ms */
     unsigned int i;
 
     /* Check command-line arguments */
