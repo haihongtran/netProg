@@ -48,7 +48,7 @@ int main(int argc, char const *argv[])
         {
             case CLIENT_HELLO:
                 /* Construct and send SERVER_HELLO */
-                sendCmdPkt(clientSock, &serverSendPkt, rand() * MAX_SEQUENCE,
+                sendCmdPkt(clientSock, &serverSendPkt, rand() % MAX_SEQUENCE,
                             HEADER_LENGTH, SERVER_HELLO);
                 break;
             case DATA_DELIVERY:

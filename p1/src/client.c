@@ -34,7 +34,7 @@ int main(int argc, char const *argv[])
     clientSendPkt.version  = STATIC_VERSION;
     clientSendPkt.userId   = STATIC_USER_ID;
     /* Construct and send CLIENT_HELLO */
-    sendDataPkt(clientSock, &clientSendPkt, rand() * MAX_SEQUENCE,
+    sendDataPkt(clientSock, &clientSendPkt, rand() % MAX_SEQUENCE,
                 HEADER_LENGTH, CLIENT_HELLO);
 
     while(1)
