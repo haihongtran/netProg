@@ -81,11 +81,12 @@ void handleClientRequest(int clientSock)
                 dataLen = ntohs(serverRecvPkt.length) - HEADER_LENGTH;
                 /* Allocate more memory for buffer to store packet */
                 buffer = (uint8_t*) realloc(buffer, bytes_read + dataLen);
+                /* Update next sequence number */
+                nextSeq = ntohs(serverSendPkt.sequence) + 1;
                 if ( buffer == NULL)
                 {
                     perror("Cannot allocate more memory");
                     /* Construct and send ERROR packet */
-                    nextSeq = ntohs(serverSendPkt.sequence) + 1;
                     sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, ERROR);
                     storedError = true;
                     break;
@@ -95,7 +96,6 @@ void handleClientRequest(int clientSock)
                 /* Increase the number of bytes read from client*/
                 bytes_read += dataLen;
                 /* Construct and send PKT_RECEIVED packet */
-                nextSeq = ntohs(serverSendPkt.sequence) + 1;
                 sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, PKT_RECEIVED);
                 break;
             case DATA_STORE:
@@ -104,13 +104,14 @@ void handleClientRequest(int clientSock)
                 /* Extract the file name from the received data */
                 fileName = (char*) malloc(dataLen * sizeof(char));
                 memcpy((void*)fileName, (void*)serverRecvPkt.data, dataLen);
+                /* Update next sequence number */
+                nextSeq = ntohs(serverSendPkt.sequence) + 1;
                 /* Create new file for writing */
                 if ( (fd = open(fileName, O_WRONLY | O_CREAT, 0666)) < 0 )
                 {
                     perror("[ERROR 0x0008] Cannot create new file for storing");
                     storedError = true;
                     /* Construct and send STORED_ERROR */
-                    nextSeq = ntohs(serverSendPkt.sequence) + 1;
                     sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, STORED_ERROR);
                     break;
                 }
@@ -120,7 +121,6 @@ void handleClientRequest(int clientSock)
                     perror("[ERROR 0x0008] Cannot write into the new file");
                     storedError = true;
                     /* Construct and send STORED_ERROR */
-                    nextSeq = ntohs(serverSendPkt.sequence) + 1;
                     sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, STORED_ERROR);
                     break;
                 }
@@ -128,7 +128,6 @@ void handleClientRequest(int clientSock)
                 free(buffer);
                 fileStored = true;
                 /* Construct FILE_STORED message and send */
-                nextSeq = ntohs(serverSendPkt.sequence) + 1;
                 sendCmdPkt(clientSock, &serverSendPkt, nextSeq, HEADER_LENGTH, FILE_STORED);
                 break;
             case ERROR:
