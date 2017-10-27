@@ -8,20 +8,25 @@ I. Additional commands
 
 II. How to run the program
     1. Open terminal
-    2. Enter 'p1/' directory
-    3. Type 'make' and press Enter. The binary files 'server' and 'client' are created in the 'p1/bin/' directory
-    4. Run the server
-    5. Run the client following this format './client serverIp 12345 fileName'
+    2. Enter 'p2/' directory
+    3. Type 'make' and press Enter. The binary files 'select_server', 'multi_server' and 'client' are created in the 'p2/bin/' directory
+    4. Run either 'select_server' or 'multi_server'
+    5. Run the client following this format './client [server_ip] [number_of_requests]'
 
 III. Scenario
-    1. Run the server
-    2. Run the client
-    3. After the TCP connection is set up, client sends CLIENT_HELLO message to server, then server replies with SERVER_HELLO message
-    4. Client uses DATA_DELIVERY message to send the required file in many packets
-    5. For each DATA_DELIVERY packet received from client, server replies with a PKT_RECEIVED message
-    6. When file transfer is complete, client sends DATA_STORE message with the file name
-    7. After storing file successfully, server sends a FILE_STORED message back to client
+    A. Overall scenario
+        1. Run the server
+        2. Run the client
+        3. Client generates a number of threads to communicate with servers
+        4. If server is 'select_server', it will process client request using one process in the order of first come, first served
+           If server is 'multi_server', it will generate one process to handle one client request
+
+    B. Scenario for each client request
+        1. After the TCP connection is set up, client sends CLIENT_HELLO message to server, then server replies with SERVER_HELLO message
+        2. Client uses DATA_DELIVERY message to send a string to server
+        3. Server replies to client with a PKT_RECEIVED message
+        4. Client sends DATA_STORE message with the file name
+        5. After storing file successfully, server sends a FILE_STORED message back to client
 
 IV. Other things
-    - To clean the binary files, do step 1, 2, then type 'make clean' and press Enter
-    - Transfered file size can be larger than 4 MBs
+    To clean the binary files, do step 1, 2 in II, then type 'make clean' and press Enter
