@@ -28,7 +28,7 @@ int openClientSock(const char* ipAddr, int portNum)
 
 void* clientSendFile(void* arg)
 {
-    argStruct* threadArg = (argStruct*) arg;
+    argStruct threadArg = *(argStruct*) arg;
     int clientSock, nextSeq;
     data_pkt clientSendPkt;
     cmd_pkt clientRecvPkt;
@@ -39,12 +39,12 @@ void* clientSendFile(void* arg)
     pthread_detach(pthread_self());
 
     /* Open and connect client sock */
-    clientSock = openClientSock(threadArg->ipAddr, PORT_NUMBER);
+    clientSock = openClientSock(threadArg.ipAddr, PORT_NUMBER);
     if ( clientSock < 0 )
         return NULL;
 
     /* Convert thread number from integer into a string and store */
-    snprintf(threadNum, sizeof(threadNum), "%u", threadArg->threadNum);
+    snprintf(threadNum, sizeof(threadNum), "%u", threadArg.threadNum);
 
     /* Construct data to send */
     strcpy(message, "I am thread #");
