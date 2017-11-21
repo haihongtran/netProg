@@ -11,7 +11,7 @@ void task2() {
 
 
 int main() {
-    puts("Making threadpool with 4 threads");
+    puts("Making thread pool with 4 threads");
     threadPool* thrPool = threadPoolInit(4);
 
     puts("Adding 40 tasks to threadpool");
@@ -20,6 +20,6 @@ int main() {
         threadPoolEnqueue(thrPool, (void*)task1, NULL);
         threadPoolEnqueue(thrPool, (void*)task2, NULL);
     };
-
+    threadPoolWait(thrPool);
     return 0;
 }

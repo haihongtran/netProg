@@ -18,8 +18,9 @@ threadPool* threadPoolInit(int numThreads) {
         perror("Cannot allocate memory for thread pool");
         return NULL;
     }
-    /* Set initial active thread number to 0 */
+    /* Set initial active and working thread number to 0 */
     thrPool->numActiveThreads = 0;
+    thrPool->numWorkingThreads = 0;
 
     /* Initialize task queue */
     if ( initTaskQueue(&(thrPool->taskQ)) < 0 ) {
@@ -43,7 +44,7 @@ threadPool* threadPoolInit(int numThreads) {
         threadInit(thrPool, &(thrPool->threads[i]), i);
     }
 
-    //TODO: need mutex?
+    //TODO: need mutex? maybe need condition of all threads active
     /* Wait for threads to be completely initialized */
     while(thrPool->numActiveThreads != numThreads)
         ;
@@ -66,6 +67,14 @@ int threadPoolEnqueue(threadPool* thrPool,void (*funcPtr)(void*), void* arg) {
     enqueueTask(&(thrPool->taskQ), newTask);
 
     return 0;
+}
+
+void threadPoolWait(threadPool* thrPool) {
+    pthread_mutex_lock(&(thrPool->mutexThreadCnt));
+    while ( thrPool->taskQ.len || thrPool->numWorkingThreads ) {
+        pthread_cond_wait(&(thrPool->allThreadsIdle), &(thrPool->mutexThreadCnt));
+    }
+    pthread_mutex_unlock(&(thrPool->mutexThreadCnt));
 }
 
 int threadInit(threadPool* thrPool, thread** threadPtr, int id) {
@@ -95,6 +104,12 @@ void* threadFunc(thread* threadPtr) {
     while(1) {
         /* Waiting for tasks */
         bSemWait(thrPool->taskQ.taskCheck);
+
+        /* Increase number of working threads */
+        pthread_mutex_lock(&(thrPool->mutexThreadCnt));
+        thrPool->numWorkingThreads++;
+        pthread_mutex_unlock(&(thrPool->mutexThreadCnt));
+
         /* Read task from task queue and execute it */
         void (*funcExec)(void*);
         void* arg;
@@ -105,6 +120,15 @@ void* threadFunc(thread* threadPtr) {
             funcExec(arg);
             free(taskPtr);
         }
+
+        /* Decrease number of working threads */
+        pthread_mutex_lock(&(thrPool->mutexThreadCnt));
+        thrPool->numWorkingThreads--;
+        /* Signal if all threads are idle now */
+        if (!thrPool->numWorkingThreads) {
+            pthread_cond_signal(&thrPool->allThreadsIdle);
+        }
+        pthread_mutex_unlock(&(thrPool->mutexThreadCnt));
     }
     /* Decrease number of active threads */
     pthread_mutex_lock(&(thrPool->mutexThreadCnt));
