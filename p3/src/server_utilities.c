@@ -83,14 +83,12 @@ void addClient(int sockfd, struct sockaddr_in* clientAddr, fileDescriptorPool *f
     }
 }
 
-void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool)
+void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool, unsigned int* assignedThrId)
 {
     int i, clientSock, nread;
-    // struct sockaddr_in* clientAddr;
     /* Find the FDs ready to be read */
     for ( i = 0; (i <= fdPool->maxi) && (fdPool->nready > 0); i++ ) {
         clientSock = fdPool->clientfd[i];
-        // memcpy(clientAddr, &(fdPool->clientAddr[i]), sizeof(struct sockaddr_in));
         if ( (clientSock > 0) && (FD_ISSET(clientSock, &fdPool->ready_set)) ) {
             fdPool->nready--;
             /* Check if there are data to read from client socket */
@@ -111,23 +109,24 @@ void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool)
                 char buffer[nread];
                 read(clientSock, buffer, nread);
                 /* Handle client request */
-                // handleClientRequest(clientSock, clientAddr, thrPool);
-                handleClientRequest(clientSock, &(fdPool->clientAddr[i]), thrPool);
+                handleClientRequest(clientSock, &(fdPool->clientAddr[i]), thrPool, *assignedThrId);
+                (*assignedThrId) = (*assignedThrId + 1) % 10;
             }
         }
     }
 }
 
-void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr, threadPool* thrPool) {
+void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr,
+    threadPool* thrPool, unsigned int assignedThrId)
+{
     /* Allocate memory for client info to put in task queue */
     clientInfo* clntInfo = (clientInfo*) malloc(sizeof(clientInfo));
     /* Fill in value for clientInfo */
     clntInfo->clientSock = clientSock;
     memcpy(&(clntInfo->clientAddr), clientAddr, sizeof(struct sockaddr_in));
-    // int* clientSd = (int*) malloc(sizeof(int));
-    // *clientSd = clientSock;
+    clntInfo->assignedThrId = assignedThrId;
 #ifdef DEBUG
-    printf("Enqueueing task...\n");
+    printf("Using assignedThrId of %d to enqueue task...\n", assignedThrId);
 #endif
     /* Enqueue task */
     threadPoolEnqueue(thrPool, (void*)httpResponse, (void*)clntInfo);

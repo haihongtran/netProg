@@ -6,6 +6,7 @@ int main() {
     socklen_t clientAddrLen = sizeof(clientSock);
     fileDescriptorPool fdPool;      /* Information pool about fd sets */
     threadPool* thrPool = NULL;     /* Thread pool */
+    unsigned int assignedThrId = 0; /* Variable used to assign tasks */
 
     /* Open non-blocking server socket */
     serverSock = openNBServerSock(PORT_NUMBER);
@@ -41,7 +42,10 @@ int main() {
                 addClient(clientSock, &clientAddr, &fdPool);
             }
         }
-        handleClientFds(&fdPool, thrPool);
+        /* If there are still connections in other sockets */
+        if ( fdPool.nready ) {
+            handleClientFds(&fdPool, thrPool, &assignedThrId);
+        }
     }
 
     return 0;

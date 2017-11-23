@@ -37,8 +37,6 @@ void enqueueTask(taskQueue* taskQ, task* newTask) {
     }
     /* Increase number of tasks in queue */
     taskQ->len++;
-    /* Post the added task */
-    bSemPost(taskQ->taskCheck);
     /* Release mutex after enqueue */
     pthread_mutex_unlock(&(taskQ->mutexQueueRW));
 }
@@ -51,16 +49,14 @@ task* dequeueTask(taskQueue* taskQ) {
         case 0:
             /* Do nothing */
             break;
-        case 1:
+        case 1: /* Only one task in the queue */
             taskQ->head = NULL;
             taskQ->tail = NULL;
             taskQ->len  = 0;
             break;
-        default:
+        default:    /* More than one task in the queue */
             taskQ->head = taskPtr->prev;
             taskQ->len--;
-            /* Post available tasks */
-            bSemPost(taskQ->taskCheck);
             break;
     }
     /* Release mutex after dequeue */
@@ -76,25 +72,32 @@ void bSemInit(bSem* bSemPtr, int value) {
     }
     pthread_mutex_init(&(bSemPtr->mutex), NULL);
     pthread_cond_init(&(bSemPtr->cond), NULL);
-    // for (i = 0; i < THREAD_NUM; i++) {
-    //     pthread_cond_init(&(bSemPtr->cond[i]), NULL);
-    // }
-    // bSemPtr->assignThr = 0;
-    bSemPtr->val = value;
+    for ( i = 0; i < THR_NUM; i++ ) {
+        bSemPtr->val[i] = value;
+    }
 }
 
-void bSemWait(bSem* bSemPtr) {
+void bSemPost(bSem* bSemPtr, int assignedThrId) {
+    int i;
     pthread_mutex_lock(&(bSemPtr->mutex));
-    while ( bSemPtr->val != 1 ) {
-        pthread_cond_wait(&(bSemPtr->cond), &(bSemPtr->mutex));
+    /* Reset all val value */
+    for ( i = 0; i < THR_NUM; i++ ) {
+        bSemPtr->val[i] = 0;
     }
-    bSemPtr->val = 0;
+    /* Turn on value corresponding to the thread to which the task is assigned */
+    bSemPtr->val[assignedThrId] = 1;
+    /* Send signal to all threads waiting on the condition variable */
+    pthread_cond_broadcast(&(bSemPtr->cond));
     pthread_mutex_unlock(&(bSemPtr->mutex));
 }
 
-void bSemPost(bSem* bSemPtr) {
+void bSemWait(bSem* bSemPtr, int thrId) {
     pthread_mutex_lock(&(bSemPtr->mutex));
-    bSemPtr->val = 1;
-    pthread_cond_signal(&(bSemPtr->cond));
+    /* Check if the posted task is for the calling thread */
+    while ( bSemPtr->val[thrId] != 1 ) {
+        pthread_cond_wait(&(bSemPtr->cond), &(bSemPtr->mutex));
+    }
+    /* Gonna process the task, so turn off the corresponding val */
+    bSemPtr->val[thrId] = 0;    // may not necessary, coz it will be changed by bSemPost
     pthread_mutex_unlock(&(bSemPtr->mutex));
 }

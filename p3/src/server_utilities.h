@@ -7,7 +7,6 @@
 
 #define PORT_NUMBER 8080
 #define LISTENQ     1024
-#define THR_NUM     10
 
 /* Information structure for file descriptor (FD) sets */
 typedef struct fileDescriptorPool {
@@ -38,19 +37,22 @@ void initPool(int sockfd, fileDescriptorPool* fdPool);
  * Add client to read fd set
  * Store its IP address and port
  */
-void addClient(int sockfd, struct sockaddr_in* clientAddr, fileDescriptorPool* fdPool);
+void addClient(int sockfd, struct sockaddr_in* clientAddr,
+    fileDescriptorPool* fdPool);
 
 /*
  * Function: handleClientFds()
  * Handle client fds ready to be read
  */
-void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool);
+void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool,
+    unsigned int* assignedThrId);
 
 /*
  * Function: handleClientRequest()
  * Handle each client request by adding task to task queue
  */
-void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr, threadPool* thrPool);
+void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr,
+    threadPool* thrPool, unsigned int assignedThrId);
 
 /*
  * Function: httpResponse()

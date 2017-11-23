@@ -4,11 +4,6 @@
 #include <time.h>
 #include "task_queue.h"
 
-typedef struct clientInfo {
-    int clientSock;
-    struct sockaddr_in clientAddr;
-} clientInfo;
-
 typedef struct thread {
     int id;
     pthread_t pthread;
@@ -24,16 +19,36 @@ typedef struct threadPool {
     taskQueue taskQ;
 } threadPool;
 
-/* Initialize thread pool*/
+/*
+ * Function: threadPoolInit()
+ * Initialize the thread pool with 'numThreads' threads
+ */
 threadPool* threadPoolInit(int numThreads);
 
-/* Add task to thread pool */
+/*
+ * Function: threadPoolEnqueue()
+ * Add task to the task queue in the thread pool pointed by thrPool
+ */
 int threadPoolEnqueue(threadPool* thrPool, void (*funcPtr)(void*), void* arg);
 
-/* Wait for all tasks to be complete */
+/*
+ * Function: threadPoolWait()
+ * Wait for all the tasks in the thread pool
+ pointed by thrPool to be finised
+ */
 void threadPoolWait(threadPool* thrPool);
 
-/* Write log */
+/*
+ * Function: signalThreadFunc()
+ * Signal all active threads when there are available tasks
+ */
+void* signalThreadFunc(void* arg);
+
+/*
+ * Function: writeLog()
+ * Write log about the response information including
+ response time, client IP address and client port number
+ */
 int writeLog(int threadId, char* ipAddr, int portNum);
 
 #endif  /*__THREAD_POOL_H__*/

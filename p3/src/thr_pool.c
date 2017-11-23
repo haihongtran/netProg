@@ -5,6 +5,7 @@ int threadInit(threadPool* thrPool, thread** threadPtr, int id);
 void* threadFunc(thread* threadPtr);
 
 threadPool* threadPoolInit(int numThreads) {
+    pthread_t tid;
     threadPool* thrPool = NULL;
     int i;
     /* Checking whether numThreads is valid */
@@ -49,6 +50,9 @@ threadPool* threadPoolInit(int numThreads) {
     while(thrPool->numActiveThreads != numThreads)
         ;
 
+    /* Create the signaling thread to notify working threads of available tasks */
+    pthread_create(&tid, NULL, signalThreadFunc, (void*)&(thrPool->taskQ));
+
 #ifdef DEBUG
     printf("Number of active threads after initialization is %d.\n", thrPool->numActiveThreads);
 #endif
@@ -81,6 +85,24 @@ void threadPoolWait(threadPool* thrPool) {
     pthread_mutex_unlock(&(thrPool->mutexThreadCnt));
 }
 
+void* signalThreadFunc(void* arg) {
+    taskQueue* taskQ = (taskQueue*) arg;
+    /* Thread reaps itself after termination */
+    pthread_detach(pthread_self());
+    /* Start checking */
+    while(1) {
+        /* Lock mutex before checking */
+        pthread_mutex_lock(&(taskQ->mutexQueueRW));
+        /* If there is at least one task in queue, post it */
+        if (taskQ->len) {
+            clientInfo* clntInfo = (clientInfo*) taskQ->head->arg;
+            bSemPost(taskQ->taskCheck, clntInfo->assignedThrId);
+        }
+        /* Release mutex after checking */
+        pthread_mutex_unlock(&(taskQ->mutexQueueRW));
+    }
+}
+
 int threadInit(threadPool* thrPool, thread** threadPtr, int id) {
     *threadPtr = (thread*) malloc(sizeof(thread));
     if ( *threadPtr == NULL ) {
@@ -110,7 +132,7 @@ void* threadFunc(thread* threadPtr) {
     /* Start work */
     while(1) {
         /* Waiting for tasks */
-        bSemWait(thrPool->taskQ.taskCheck);
+        bSemWait(thrPool->taskQ.taskCheck, threadPtr->id);
 
         /* Increase number of working threads */
         pthread_mutex_lock(&(thrPool->mutexThreadCnt));
@@ -172,7 +194,7 @@ int writeLog(int threadId, char* ipAddr, int portNum) {
     fp = fopen(fileName, "a");
 
     /* Write to file */
-    fprintf(fp, "%d:%d:%d %s:%d GET /index.html\n", timeInfo->tm_hour,
+    fprintf(fp, "%02d:%02d:%02d %s:%d GET /index.html\n", timeInfo->tm_hour,
         timeInfo->tm_min, timeInfo->tm_sec, ipAddr, portNum);
 
     /* Close file after writing */
