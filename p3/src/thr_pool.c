@@ -49,6 +49,10 @@ threadPool* threadPoolInit(int numThreads) {
     while(thrPool->numActiveThreads != numThreads)
         ;
 
+#ifdef DEBUG
+    printf("Number of active threads after initialization is %d.\n", thrPool->numActiveThreads);
+#endif
+
     return thrPool;
 }
 
@@ -88,13 +92,16 @@ int threadInit(threadPool* thrPool, thread** threadPtr, int id) {
     (*threadPtr)->id = id;
 
     /* Create and execute thread */
-    pthread_create(&(*threadPtr)->pthread, NULL, (void*) threadFunc, (*threadPtr));
-    pthread_detach((*threadPtr)->pthread);
+    pthread_create(&(*threadPtr)->pthread, NULL, (void*) threadFunc, (void*)(*threadPtr));
     return 0;
 }
 
 void* threadFunc(thread* threadPtr) {
     threadPool* thrPool = threadPtr->thrPool;
+
+    /* Thread reaps itself after termination */
+    pthread_detach(pthread_self());
+
     /* Increase number of active threads */
     pthread_mutex_lock(&(thrPool->mutexThreadCnt));
     thrPool->numActiveThreads++;
@@ -110,14 +117,21 @@ void* threadFunc(thread* threadPtr) {
         thrPool->numWorkingThreads++;
         pthread_mutex_unlock(&(thrPool->mutexThreadCnt));
 
-        /* Read task from task queue and execute it */
+        /* Dequeue task from task queue */
         void (*funcExec)(void*);
         void* arg;
         task* taskPtr = dequeueTask(&(thrPool->taskQ));
+        /* Execute the dequeued task */
         if ( taskPtr ) {
+#ifdef DEBUG
+            printf("Executing dequeued task...\n");
+#endif
             funcExec = taskPtr->function;
             arg = taskPtr->arg;
             funcExec(arg);
+            /* Free allocated memory for client socket descriptor */
+            free(taskPtr->arg);
+            /* Free allocated memory for task */
             free(taskPtr);
         }
 
