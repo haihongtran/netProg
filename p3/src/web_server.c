@@ -38,7 +38,7 @@ int main() {
 #ifdef DEBUG
                 printf("Adding client...\n");
 #endif
-                addClient(clientSock, &fdPool);
+                addClient(clientSock, &clientAddr, &fdPool);
             }
         }
         handleClientFds(&fdPool, thrPool);

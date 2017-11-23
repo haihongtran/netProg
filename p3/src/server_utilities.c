@@ -57,7 +57,7 @@ void initPool(int sockfd, fileDescriptorPool *fdPool) {
     FD_SET(sockfd, &fdPool->read_set);
 }
 
-void addClient(int sockfd, fileDescriptorPool *fdPool) {
+void addClient(int sockfd, struct sockaddr_in* clientAddr, fileDescriptorPool *fdPool) {
     int i;
     fdPool->nready--;
     /* Find an available slot */
@@ -67,6 +67,8 @@ void addClient(int sockfd, fileDescriptorPool *fdPool) {
             fdPool->clientfd[i] = sockfd;
             /* Add the socket descriptor to read set */
             FD_SET(sockfd, &fdPool->read_set);
+            /* Copy the client address into the pool */
+            memcpy(&fdPool->clientAddr[i], clientAddr, sizeof(struct sockaddr_in));
             /* Update max descriptor */
             if ( sockfd > fdPool->maxfd )
                 fdPool->maxfd = sockfd;
@@ -84,9 +86,11 @@ void addClient(int sockfd, fileDescriptorPool *fdPool) {
 void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool)
 {
     int i, clientSock, nread;
+    // struct sockaddr_in* clientAddr;
     /* Find the FDs ready to be read */
     for ( i = 0; (i <= fdPool->maxi) && (fdPool->nready > 0); i++ ) {
         clientSock = fdPool->clientfd[i];
+        // memcpy(clientAddr, &(fdPool->clientAddr[i]), sizeof(struct sockaddr_in));
         if ( (clientSock > 0) && (FD_ISSET(clientSock, &fdPool->ready_set)) ) {
             fdPool->nready--;
             /* Check if there are data to read from client socket */
@@ -107,21 +111,26 @@ void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool)
                 char buffer[nread];
                 read(clientSock, buffer, nread);
                 /* Handle client request */
-                handleClientRequest(clientSock, thrPool);
+                // handleClientRequest(clientSock, clientAddr, thrPool);
+                handleClientRequest(clientSock, &(fdPool->clientAddr[i]), thrPool);
             }
         }
     }
 }
 
-void handleClientRequest(int clientSock, threadPool* thrPool) {
-    /* Allocate memory for client socket descriptor to put in task queue */
-    int* clientSd = (int*) malloc(sizeof(int));
-    *clientSd = clientSock;
+void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr, threadPool* thrPool) {
+    /* Allocate memory for client info to put in task queue */
+    clientInfo* clntInfo = (clientInfo*) malloc(sizeof(clientInfo));
+    /* Fill in value for clientInfo */
+    clntInfo->clientSock = clientSock;
+    memcpy(&(clntInfo->clientAddr), clientAddr, sizeof(struct sockaddr_in));
+    // int* clientSd = (int*) malloc(sizeof(int));
+    // *clientSd = clientSock;
 #ifdef DEBUG
     printf("Enqueueing task...\n");
 #endif
     /* Enqueue task */
-    threadPoolEnqueue(thrPool, (void*)httpResponse, (void*)clientSd);
+    threadPoolEnqueue(thrPool, (void*)httpResponse, (void*)clntInfo);
 }
 
 void httpResponse(void* sockfd) {

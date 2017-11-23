@@ -14,6 +14,7 @@ typedef struct fileDescriptorPool {
     int maxfd;                  /* Max value of FD in all sets */
     fd_set read_set;            /* fd_set of active FDs to read from */
     int clientfd[FD_SETSIZE];   /* Set of active FDs */
+    struct sockaddr_in clientAddr[FD_SETSIZE]; /* Address of active clients */
     int maxi;                   /* Max index used in clientfd */
     fd_set ready_set;           /* fd_set of FDs ready to be read */
     int nready;                 /* Number of FDs ready to be read */
@@ -35,8 +36,9 @@ void initPool(int sockfd, fileDescriptorPool* fdPool);
 /*
  * Function: addClient()
  * Add client to read fd set
+ * Store its IP address and port
  */
-void addClient(int sockfd, fileDescriptorPool* fdPool);
+void addClient(int sockfd, struct sockaddr_in* clientAddr, fileDescriptorPool* fdPool);
 
 /*
  * Function: handleClientFds()
@@ -46,9 +48,9 @@ void handleClientFds(fileDescriptorPool* fdPool, threadPool* thrPool);
 
 /*
  * Function: handleClientRequest()
- * Handle each client request
+ * Handle each client request by adding task to task queue
  */
-void handleClientRequest(int clientSock, threadPool* thrPool);
+void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr, threadPool* thrPool);
 
 /*
  * Function: httpResponse()

@@ -119,17 +119,20 @@ void* threadFunc(thread* threadPtr) {
 
         /* Dequeue task from task queue */
         void (*funcExec)(void*);
-        void* arg;
+        clientInfo* clntInfo;
         task* taskPtr = dequeueTask(&(thrPool->taskQ));
-        /* Execute the dequeued task */
+        /* Check if task is not NULL */
         if ( taskPtr ) {
 #ifdef DEBUG
             printf("Executing dequeued task...\n");
 #endif
             funcExec = taskPtr->function;
-            arg = taskPtr->arg;
-            funcExec(arg);
-            /* Free allocated memory for client socket descriptor */
+            clntInfo = (clientInfo*) taskPtr->arg;
+            /* Write log about response information */
+            writeLog(threadPtr->id, inet_ntoa(clntInfo->clientAddr.sin_addr), clntInfo->clientAddr.sin_port);
+            /* Executing task */
+            funcExec(&(clntInfo->clientSock));
+            /* Free allocated memory for client info */
             free(taskPtr->arg);
             /* Free allocated memory for task */
             free(taskPtr);
@@ -149,4 +152,31 @@ void* threadFunc(thread* threadPtr) {
     thrPool->numActiveThreads--;
     pthread_mutex_unlock(&(thrPool->mutexThreadCnt));
     return NULL;
+}
+
+int writeLog(int threadId, char* ipAddr, int portNum) {
+    char fileName[15];
+    char threadIdStr[5];
+    FILE* fp;
+    time_t rawtime;
+    struct tm* timeInfo;
+
+    /* Get current time */
+    time(&rawtime);
+    timeInfo = localtime(&rawtime);
+
+    /* Construct file name */
+    sprintf(fileName, "thread_%d.log", threadId + 1);
+
+    /* Open file */
+    fp = fopen(fileName, "a");
+
+    /* Write to file */
+    fprintf(fp, "%d:%d:%d %s:%d GET /index.html\n", timeInfo->tm_hour,
+        timeInfo->tm_min, timeInfo->tm_sec, ipAddr, portNum);
+
+    /* Close file after writing */
+    fclose(fp);
+
+    return 0;
 }

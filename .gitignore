@@ -6,3 +6,6 @@
 
 # File being edited
 *~
+
+# Programming Assignment 3 - Log files
+*.log
