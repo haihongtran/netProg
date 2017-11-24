@@ -32,13 +32,17 @@ void* clientHttpRequest(void* arg) {
     char* httpReqMsg = "GET /index.html/ HTTP/1.1\r\nHost: index.html\r\n\r\n";
     unsigned int msgLen = strlen(httpReqMsg);
     unsigned int allBytesRead, bytesRead;
+    unsigned int responseSize;
     char recvBuff[DATA_SIZE] = {0};
 
     /* Open and connect client sock */
     clientSock = openClientSock(threadArg.ipAddr, threadArg.portNum);
     if ( clientSock < 0 )
         return NULL;
-    
+
+    /* Assume client has parsed HTTP response to get the expected size */
+    responseSize = HTTP_RES_HDR_SIZE + HTML_FILE_SIZE;
+
     /* Send HTTP request and receive HTTP response */
     for (i = 0; i < threadArg.reqNum; i++) {
         /* Send HTTP request to server */
@@ -54,8 +58,7 @@ void* clientHttpRequest(void* arg) {
             }
             /* Increase receive bytes */
             allBytesRead += bytesRead;
-            /* Assume client knew the HTML file size by parsing the HTTP header */
-            if ( allBytesRead >= HTTP_RES_HDR_SIZE + HTML_FILE_SIZE ) {
+            if ( allBytesRead >= responseSize ) {
 #ifdef DEBUG
                 printf("Received the whole file! allBytesRead is now %u bytes.\n", allBytesRead);
 #endif

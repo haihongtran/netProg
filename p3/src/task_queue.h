@@ -7,7 +7,7 @@
 
 /*
  * Structure to store information of client,
- which is the arg element of the task
+ which is the arg element of the task structure
  */
 typedef struct clientInfo {
     int clientSock;

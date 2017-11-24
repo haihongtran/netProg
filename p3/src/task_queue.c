@@ -72,6 +72,7 @@ void bSemInit(bSem* bSemPtr, int value) {
     }
     pthread_mutex_init(&(bSemPtr->mutex), NULL);
     pthread_cond_init(&(bSemPtr->cond), NULL);
+    /* Initialize all values */
     for ( i = 0; i < THR_NUM; i++ ) {
         bSemPtr->val[i] = value;
     }

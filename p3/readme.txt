@@ -17,4 +17,4 @@ III. Notes
 - In the task queue at the server side, besides client socket descriptor, each task also includes function pointer (to process task), client address (including client IP address and client port), and assigned thread ID for the task
 - The task queue is implemented inside the thread pool
 - The index.html file is stored in the 'p3/res' directory
-- Assume client can parse the HTTP response to get the HTML file size. Implement HTTP parser is not the purpose of this assignment.
+- HTML file transmission: assume client can parse the HTTP response to get the HTML file size. Implementing HTTP parser is not the purpose of this assignment.
