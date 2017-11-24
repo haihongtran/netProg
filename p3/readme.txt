@@ -13,8 +13,12 @@ II. Scenario
     5. After a thread at the client side sends all its requests, it will close the socket and exit
     6. After sending the responses, server continues to listen to new client requests
 
-III. Notes
-- In the task queue at the server side, besides client socket descriptor, each task also includes function pointer (to process task), client address (including client IP address and client port), and assigned thread ID for the task
-- The task queue is implemented inside the thread pool
-- The index.html file is stored in the 'p3/res' directory
-- HTML file transmission: assume client can parse the HTTP response to get the HTML file size. Implementing HTTP parser is not the purpose of this assignment.
+III. HTML file transmission
+    1. Firstly, server thread sends the HTTP response header, following by data of the index.html file
+    2. Client thread receives the data but currently do nothing to it (no requirement for processing)
+    3. After sending the file, server thread sends an ending message to client to signal the completeness of file transmission
+    4. Client thread receives the ending message and finish the transmission session
+
+IV. Notes
+    1. The index.html file is stored in the 'p3/res' directory
+    2. In the task queue at the server side, besides client socket descriptor, each task also includes function pointer (to process task), client address (including client IP address and client port), and assigned thread ID for the task

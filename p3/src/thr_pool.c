@@ -45,7 +45,6 @@ threadPool* threadPoolInit(int numThreads) {
         threadInit(thrPool, &(thrPool->threads[i]), i);
     }
 
-    //TODO: need mutex? maybe need condition of all threads active
     /* Wait for threads to be completely initialized */
     while(thrPool->numActiveThreads != numThreads)
         ;

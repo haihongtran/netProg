@@ -135,7 +135,10 @@ void handleClientRequest(int clientSock, struct sockaddr_in* clientAddr,
 void httpResponse(void* sockfd) {
     int clientSock = *(int*) sockfd;
     int fd, bytesRead, bytesWrite;
-    char* httpRes = "HTTP/1.1 200 OK\r\n\r\n";
+    char* httpReqMsg = "HTTP/1.1 200 OK\r\n\r\n";   /* HTTP response header */
+    unsigned int httpReqLen = strlen(httpReqMsg);
+    char* endMsg = "\nHTTP/END\n";  /* End message to indicate end of tranmission */
+    unsigned int endMsgLen = strlen(endMsg);
     char sendBuf[DATA_SIZE];
 
     /* Open index.html file */
@@ -146,7 +149,7 @@ void httpResponse(void* sockfd) {
     }
 
     /* Write http response hdr to socket */
-    bytesWrite = write(clientSock, httpRes, strlen(httpRes));
+    bytesWrite = write(clientSock, httpReqMsg, httpReqLen);
     if ( bytesWrite < 0 ) {
         perror("Writing HTTP header to socket has error");
         close(fd);
@@ -158,16 +161,26 @@ void httpResponse(void* sockfd) {
         bytesRead = read(fd, sendBuf, DATA_SIZE);
         if ( bytesRead < 0 ) {  /* Read error */
             perror("Cannot read the HTML file");
+            close(fd);
             exit(-1);
         }
         else if ( bytesRead > 0 ) {
             bytesWrite = write(clientSock, sendBuf, bytesRead);
             if ( bytesWrite < 0 ) {
-                perror("Writing to socket has error");
+                perror("Writing HTML file to socket has error");
+                close(fd);
+                exit(-1);
             }
         }
-        else    /* End of file */
+        else {  /* End of file */
+            bytesWrite = write(clientSock, endMsg, endMsgLen);
+            if ( bytesWrite < 0 ) {
+                perror("Writing end message to socket has error");
+                close(fd);
+                exit(-1);
+            }
             break;
+        }
     }
     /* Close file after sending */
     close(fd);
