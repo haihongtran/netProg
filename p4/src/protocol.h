@@ -21,12 +21,67 @@
 
 #define DATA_SIZE       5000
 #define HEADER_LENGTH   12
+#define MAX_FILES       10
 
-typedef struct pktForm {
+typedef struct headerPkt {
     uint32_t pktLen;
     uint32_t id;
     uint32_t msgType;
+} headerPkt;
+
+typedef struct helloFromChildPkt {
+    headerPkt hdr;
+    unsigned int portNum;
+} helloFromChildPkt;
+
+typedef struct fileInfo {
+    char fileName[255];
+    unsigned int fileSize;
+} fileInfo;
+
+typedef struct fileInfoPkt {
+    headerPkt hdr;
+    unsigned int fileNumber;
+    fileInfo files[MAX_FILES];
+} fileInfoPkt;
+
+typedef struct fileInfoRecvSuccessPkt {
+    headerPkt hdr;
+    unsigned int fileNumber;
+    char fileNames[MAX_FILES][255];
+} fileInfoRecvSuccessPkt;
+
+typedef struct searchQueryPkt {
+    headerPkt hdr;
+    char fileName[255];
+} searchQueryPkt;
+
+typedef struct searchAnsSuccessPkt {
+    headerPkt hdr;
+    char ipAddr[20];
+    unsigned int portNum;
+} searchAnsSuccessPkt;
+
+typedef struct fileReqPkt {
+    headerPkt hdr;
+    char fileName[255];
+} fileReqPkt;
+
+typedef struct fileResSuccessPkt {
+    headerPkt hdr;
     uint8_t data[DATA_SIZE];
-} pktForm;
+} fileResSuccessPkt;
+
+typedef struct fileInfoSharePkt {
+    headerPkt hdr;
+    unsigned int fileNumber;
+    fileInfo files[MAX_FILES];
+} fileInfoSharePkt;
+
+typedef struct fileInfoShareSuccessPkt {
+    headerPkt hdr;
+    unsigned int fileNumber;
+    fileInfo files[MAX_FILES];
+} fileInfoShareSuccessPkt;
 
 #endif  /*__PROTOCOL_H__*/
