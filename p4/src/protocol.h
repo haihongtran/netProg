@@ -34,26 +34,26 @@ typedef struct helloFromChildPkt {
     unsigned int portNum;
 } helloFromChildPkt;
 
-typedef struct fileInfo {
-    char fileName[255];
+typedef struct fileInformation {
+    char fileName[256];
     unsigned int fileSize;
-} fileInfo;
+} fileInformation;
 
 typedef struct fileInfoPkt {
     headerPkt hdr;
     unsigned int fileNumber;
-    fileInfo files[MAX_FILES];
+    fileInformation files[MAX_FILES];
 } fileInfoPkt;
 
 typedef struct fileInfoRecvSuccessPkt {
     headerPkt hdr;
     unsigned int fileNumber;
-    char fileNames[MAX_FILES][255];
+    char fileNames[MAX_FILES][256];
 } fileInfoRecvSuccessPkt;
 
 typedef struct searchQueryPkt {
     headerPkt hdr;
-    char fileName[255];
+    char fileName[256];
 } searchQueryPkt;
 
 typedef struct searchAnsSuccessPkt {
@@ -64,7 +64,7 @@ typedef struct searchAnsSuccessPkt {
 
 typedef struct fileReqPkt {
     headerPkt hdr;
-    char fileName[255];
+    char fileName[256];
 } fileReqPkt;
 
 typedef struct fileResSuccessPkt {
@@ -75,13 +75,13 @@ typedef struct fileResSuccessPkt {
 typedef struct fileInfoSharePkt {
     headerPkt hdr;
     unsigned int fileNumber;
-    fileInfo files[MAX_FILES];
+    fileInformation files[MAX_FILES];
 } fileInfoSharePkt;
 
 typedef struct fileInfoShareSuccessPkt {
     headerPkt hdr;
     unsigned int fileNumber;
-    fileInfo files[MAX_FILES];
+    fileInformation files[MAX_FILES];
 } fileInfoShareSuccessPkt;
 
 #endif  /*__PROTOCOL_H__*/
