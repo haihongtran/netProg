@@ -11,6 +11,18 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <getopt.h>
+
+/* Information structure for file descriptor (FD) sets */
+typedef struct fileDescriptorPool {
+    int maxfd;                  /* Max value of FD in all sets */
+    fd_set read_set;            /* fd_set of active FDs to read from */
+    int clientfd[FD_SETSIZE];   /* Set of active FDs */
+    struct sockaddr_in clientAddr[FD_SETSIZE]; /* Address of active clients */
+    int maxi;                   /* Max index used in clientfd */
+    fd_set ready_set;           /* fd_set of FDs ready to be read */
+    int nready;                 /* Number of FDs ready to be read */
+} fileDescriptorPool;
 
 /* Function prototypes */
 int openNBServerSock(int portNum);
