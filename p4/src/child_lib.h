@@ -4,6 +4,7 @@
 #include "protocol.h"
 #include "common.h"
 
+#include <sys/stat.h>
 #include <dirent.h>
 
 /*

@@ -7,7 +7,7 @@
 #define HELLO_FROM_SUPER        0x00000011
 #define HELLO_SUPER_TO_SUPER    0x00000012
 #define FILE_INFO               0x00000020
-#define FILE_INTO_RECV_SUCCESS  0x00000021
+#define FILE_INFO_RECV_SUCCESS  0x00000021
 #define FILE_INFO_RECV_ERROR    0x00000022
 #define SEARCH_QUERY            0x00000030
 #define SEARCH_ANS_SUCCESS      0x00000031
@@ -17,71 +17,76 @@
 #define FILE_RES_FAIL           0x00000042
 #define FILE_INFO_SHARE         0x00000050
 #define FILE_INFO_SHARE_SUCCESS 0x00000051
-#define FILE_INFO_SHARE_FAIL    0x00000052
+#define FILE_INFO_SHARE_ERROR   0x00000052
 
 #define DATA_SIZE       5000
 #define HEADER_LENGTH   12
 #define MAX_FILES       10
 
-typedef struct headerPkt {
-    uint32_t pktLen;
+typedef struct headerPacket {
+    uint32_t totalLen;
     uint32_t id;
     uint32_t msgType;
-} headerPkt;
+} headerPacket;
 
-typedef struct helloFromChildPkt {
-    headerPkt hdr;
+typedef struct helloFromChildPacket {
+    headerPacket hdr;
     unsigned int portNum;
-} helloFromChildPkt;
+} helloFromChildPacket;
+
+typedef struct helloSuperToSuperPacket {
+    headerPacket hdr;
+    unsigned int portNum;
+} helloSuperToSuperPacket;
 
 typedef struct fileInformation {
-    char fileName[256];
+    char fileName[96];
     unsigned int fileSize;
 } fileInformation;
 
-typedef struct fileInfoPkt {
-    headerPkt hdr;
+typedef struct fileInfoPacket {
+    headerPacket hdr;
     unsigned int fileNumber;
     fileInformation files[MAX_FILES];
-} fileInfoPkt;
+} fileInfoPacket;
 
-typedef struct fileInfoRecvSuccessPkt {
-    headerPkt hdr;
+typedef struct fileInfoRecvSuccessPacket {
+    headerPacket hdr;
     unsigned int fileNumber;
-    char fileNames[MAX_FILES][256];
-} fileInfoRecvSuccessPkt;
+    char fileNames[MAX_FILES][96];
+} fileInfoRecvSuccessPacket;
 
-typedef struct searchQueryPkt {
-    headerPkt hdr;
-    char fileName[256];
-} searchQueryPkt;
+typedef struct searchQueryPacket {
+    headerPacket hdr;
+    char fileName[96];
+} searchQueryPacket;
 
-typedef struct searchAnsSuccessPkt {
-    headerPkt hdr;
+typedef struct searchAnsSuccessPacket {
+    headerPacket hdr;
     char ipAddr[20];
     unsigned int portNum;
-} searchAnsSuccessPkt;
+} searchAnsSuccessPacket;
 
-typedef struct fileReqPkt {
-    headerPkt hdr;
-    char fileName[256];
-} fileReqPkt;
+typedef struct fileReqPacket {
+    headerPacket hdr;
+    char fileName[96];
+} fileReqPacket;
 
-typedef struct fileResSuccessPkt {
-    headerPkt hdr;
+typedef struct fileResSuccessPacket {
+    headerPacket hdr;
     uint8_t data[DATA_SIZE];
-} fileResSuccessPkt;
+} fileResSuccessPacket;
 
-typedef struct fileInfoSharePkt {
-    headerPkt hdr;
+typedef struct fileInfoSharePacket {
+    headerPacket hdr;
     unsigned int fileNumber;
     fileInformation files[MAX_FILES];
-} fileInfoSharePkt;
+} fileInfoSharePacket;
 
-typedef struct fileInfoShareSuccessPkt {
-    headerPkt hdr;
+typedef struct fileInfoShareSuccessPacket {
+    headerPacket hdr;
     unsigned int fileNumber;
     fileInformation files[MAX_FILES];
-} fileInfoShareSuccessPkt;
+} fileInfoShareSuccessPacket;
 
 #endif  /*__PROTOCOL_H__*/

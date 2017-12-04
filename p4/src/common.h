@@ -11,7 +11,10 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
 #include <getopt.h>
+
+#define LISTENQ 1024
 
 /* Information structure for file descriptor (FD) sets */
 typedef struct fileDescriptorPool {
@@ -28,5 +31,12 @@ typedef struct fileDescriptorPool {
 int openNBServerSock(int portNum);
 void initPool(int sockfd, fileDescriptorPool *fdPool);
 void addClient(int sockfd, struct sockaddr_in* clientAddr, fileDescriptorPool *fdPool);
+
+/*
+ * Function: openClientSock()
+ * Open client socket and connect to server
+ * Return client socket descriptor for communication
+ */
+int openClientSock(const char* ipAddr, int portNum);
 
 #endif  /*__COMMON_H__*/
