@@ -51,6 +51,8 @@ int main(int argc, char* argv[]) {
     }
     /* Connect to corresponding super node */
     clientSock = openClientSock(superIpAddr, superPortNum);
+    if ( clientSock < 0 )
+        return -1;
     /* Construct HELLO_FROM_CHILD packet */
     helloFromChildPkt.hdr.totalLen = htonl(sizeof(helloFromChildPacket));
     helloFromChildPkt.hdr.id = htonl(id);
@@ -61,11 +63,11 @@ int main(int argc, char* argv[]) {
     /* Wait for HELLO_FROM_SUPER message from super node */
     read(clientSock, &helloFromSuperPkt, HEADER_LEN);
     if ( ntohl(helloFromSuperPkt.msgType) != HELLO_FROM_SUPER ) {
-        printf("Access to super node is denied\n");
+        printf("Function read() returned. Not received HELLO_FROM_SUPER\n");
         return -1;
     }
     else
-        printf("Access granted\n");
+        printf("Received HELLO_FROM_SUPER. Access granted\n");
 
     /* Construct file info packet */
     fileInfoPkt.hdr.id = htonl(id);

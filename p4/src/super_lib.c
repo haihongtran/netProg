@@ -89,9 +89,10 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     fileInformationTable* fileInfoTable, childListeningPort* childPorts,
     unsigned int id)
 {
-    int i;
+    int i, socketOtherSuper = 0;
+    unsigned int pktLen = 0;
     unsigned int childPort = 0;
-    char buffer[1020] = {0}; /* 1020 is approximately the length of the biggest possible packet: fileInfoPacket */
+    char buffer[1020] = {0}; /* 1020 is approximately the of the biggest possible packet: fileInfoPacket */
     int bytes_read;     /* Number of bytes read from client */
     headerPacket hdr;   /* Used to parse packet header */
     fileInfoStoreStruct* fileInfoStore;
@@ -106,6 +107,8 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     fileInfoSharePacket* fileInfoSharePkt = NULL;
     fileInfoShareSuccessPacket* fileInfoShareSuccessPkt = NULL;
     headerPacket* fileInfoShareErrorPkt = NULL;
+    headerPacket* hdrInfoShare; /* Used to parse return packet of FILE_INFO_SHARE message */
+    char bufferInfoShare[1260] = {0};   /* 1260 is approximately length of FILE_INFO_SHARE message */
 
     /* Read data from client */
     bytes_read = read(clientSock, buffer, sizeof(buffer));
@@ -137,6 +140,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             helloFromSuperPkt->id = htonl(id);
             helloFromSuperPkt->msgType = htonl(HELLO_FROM_SUPER);
             write(clientSock, helloFromSuperPkt, HEADER_LEN);
+            printf("Sending HELLO_FROM_SUPER packet\n");
             free(helloFromSuperPkt);
             break;
         case HELLO_SUPER_TO_SUPER:  //TODO: consider sending back a hello message
@@ -165,10 +169,17 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
                 printf("Could not find corersponding port number\n");
                 return;
             }
-            /* Allocate memory for the packet */
+            /* Allocate memory to hold data of the FILE_INFO message */
             fileInfoPkt = (fileInfoPacket*) malloc(sizeof(fileInfoPacket));
             /* Fill in data */
             memcpy(fileInfoPkt, buffer, ntohl(hdr.totalLen));
+            /* Construct FILE_INFO_SHARE message */
+            fileInfoSharePkt = (fileInfoSharePacket*) malloc(sizeof(fileInfoSharePacket));
+            fileInfoSharePkt->hdr.id = htonl(id);
+            fileInfoSharePkt->hdr.msgType = htonl(FILE_INFO_SHARE);
+            pktLen = HEADER_LEN + sizeof(unsigned int) + ntohl(fileInfoPkt->fileNum)*sizeof(fileInfoStoreStruct);
+            fileInfoSharePkt->hdr.totalLen = htonl(pktLen);
+            fileInfoSharePkt->fileNum = fileInfoPkt->fileNum;   // Copy directly the network format (Big Endian)
             /* Store file information */
             for ( i = 0; i < ntohl(fileInfoPkt->fileNum); i++ ) {
                 /* Construct information */
@@ -177,25 +188,94 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
                 fileInfoStore->fileSize = ntohl(fileInfoPkt->files[i].fileSize);
                 strcpy(fileInfoStore->ipAddr, inet_ntoa(clientAddr->sin_addr));
                 fileInfoStore->portNum = childPort;
-                printf("File %d: %s\t%u bytes\tPort: %d\n", i+1, fileInfoStore->fileName, fileInfoStore->fileSize, fileInfoStore->portNum);
                 /* Put file information into hash table */
                 insertFileInfo(fileInfoStore, fileInfoTable);
+                /* Copy data to FILE_INFO_SHARE message */
+                strcpy(fileInfoSharePkt->files[i].fileName, fileInfoStore->fileName);
+                fileInfoSharePkt->files[i].fileSize = htonl(fileInfoStore->fileSize);
+                strcpy(fileInfoSharePkt->files[i].ipAddr, fileInfoStore->ipAddr);
+                fileInfoSharePkt->files[i].portNum = htonl(fileInfoStore->portNum);
             }
-            //TODO: share info to other super node
-            /* Construct packet to share information to other super node */
-            // fileInfoSharePkt = (fileInfoSharePacket*) malloc(sizeof(fileInfoSharePacket));
-            // memcpy(fileInfoSharePkt, buffer, ntohl(hdr.totalLen));
-            // free(fileInfoSharePkt);
+            //TODO: send FILE_INFO_RECV_SUCCESS back to child
             free(fileInfoPkt);
+            //TODO: consider sending FILE_INFO_RECV_ERROR back to child
+            /* Connect to other super node */
+            socketOtherSuper = openClientSock(otherSuperIpAddr, *otherSuperPortNum);
+            if ( socketOtherSuper < 0 ) {
+                printf("Cannot connect to other super node to share file info\n");
+                free(fileInfoSharePkt);
+                break;
+            }
+            /* Send FILE_INFO_SHARE packet */
+            write(socketOtherSuper, fileInfoSharePkt, pktLen);
+            printf("Sending FILE_INFO_SHARE packet\n");
+            free(fileInfoSharePkt);
+            /* Waiting for reply */
+            bytes_read = read(socketOtherSuper, bufferInfoShare, sizeof(bufferInfoShare));
+            if ( bytes_read < 0 ) {
+                perror("Cannot read from client socket");
+                close(socketOtherSuper);
+                exit(-1);
+            }
+            hdrInfoShare = (headerPacket*) malloc(HEADER_LEN);
+            memcpy(hdrInfoShare, bufferInfoShare, HEADER_LEN);
+            if ( ntohl(hdrInfoShare->msgType) == FILE_INFO_SHARE_SUCCESS )
+                printf("Received FILE_INFO_SHARE_SUCCESS from other super node\n");
+            else if ( ntohl(hdrInfoShare->msgType) == FILE_INFO_SHARE_ERROR )
+                printf("Received FILE_INFO_SHARE_ERROR from other super node\n");
+            else
+                printf("Unknown message. It msgType file is %u\n", ntohl(hdrInfoShare->msgType));
+            free(hdrInfoShare);
+            close(socketOtherSuper);
             break;
         case SEARCH_QUERY:
             break;
         case FILE_INFO_SHARE:
+            printf("Received FILE_INFO_SHARE message from other super node\n");
+            if ( ntohl(hdr.totalLen) > bytes_read ) {
+                printf("Not receiving all contents from other super node. Sending back FILE_INFO_SHARE_ERROR message\n");
+                fileInfoShareErrorPkt = (headerPacket*) malloc(HEADER_LEN);
+                fileInfoShareErrorPkt->totalLen = htonl(HEADER_LEN);
+                fileInfoShareErrorPkt->id = htonl(id);
+                fileInfoShareErrorPkt->msgType = htonl(FILE_INFO_SHARE_ERROR);
+                write(clientSock, &fileInfoShareErrorPkt, HEADER_LEN);
+                printf("Sending FILE_INFO_SHARE_ERROR packet\n");
+                free(fileInfoShareErrorPkt);
+                break;
+            }
+            /* Allocate memory for the packet */
+            fileInfoSharePkt = (fileInfoSharePacket*) malloc(sizeof(fileInfoSharePacket));
+            /* Fill in data */
+            memcpy(fileInfoSharePkt, buffer, ntohl(hdr.totalLen));
+            fileInfoShareSuccessPkt = (fileInfoShareSuccessPacket*) malloc(sizeof(fileInfoShareSuccessPacket));
+            fileInfoShareSuccessPkt->hdr.totalLen = fileInfoSharePkt->hdr.totalLen; // Copy directly network format
+            fileInfoShareSuccessPkt->hdr.id = htonl(id);
+            fileInfoShareSuccessPkt->hdr.msgType = htonl(FILE_INFO_SHARE_SUCCESS);
+            fileInfoShareSuccessPkt->fileNum = fileInfoSharePkt->fileNum;   // Copy directly network format
+            for ( i = 0; i < ntohl(fileInfoSharePkt->fileNum); i++) {
+                /* Construct information */
+                fileInfoStore = (fileInfoStoreStruct*) malloc(sizeof(fileInfoStoreStruct));
+                strcpy(fileInfoStore->fileName, fileInfoSharePkt->files[i].fileName);
+                fileInfoStore->fileSize = ntohl(fileInfoSharePkt->files[i].fileSize);
+                strcpy(fileInfoStore->ipAddr, fileInfoSharePkt->files[i].ipAddr);
+                fileInfoStore->portNum = ntohl(fileInfoSharePkt->files[i].portNum);
+                /* Put file information into hash table */
+                insertFileInfo(fileInfoStore, fileInfoTable);
+                /* Update FILE_INFO_SUCCESS packet */
+                strcpy(fileInfoShareSuccessPkt->files[i].fileName, fileInfoStore->fileName);
+                fileInfoShareSuccessPkt->files[i].fileSize = htonl(fileInfoStore->fileSize);
+                strcpy(fileInfoShareSuccessPkt->files[i].ipAddr, fileInfoStore->ipAddr);
+                fileInfoShareSuccessPkt->files[i].portNum = htonl(fileInfoStore->portNum);
+            }
+            /* Reply to the other super node with FILE_INFO_SUCCESS message */
+            write(clientSock, fileInfoShareSuccessPkt, ntohl(fileInfoShareSuccessPkt->hdr.totalLen));
+            printf("Sending FILE_INFO_SHARE_SUCCESS packet back to other super node\n");
+            free(fileInfoSharePkt);
             break;
-        case FILE_INFO_SHARE_SUCCESS:
-            break;
-        case FILE_INFO_SHARE_ERROR:
-            break;
+        // case FILE_INFO_SHARE_SUCCESS:
+        //     break;
+        // case FILE_INFO_SHARE_ERROR:
+        //     break;
         default:
             break;
     }

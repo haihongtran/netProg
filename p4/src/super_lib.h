@@ -27,6 +27,24 @@ typedef struct childListeningPort {
     unsigned int portNum;
 } childListeningPort;
 
+/* Communication packets between super nodes */
+typedef struct helloSuperToSuperPacket {
+    headerPacket hdr;
+    unsigned int portNum;
+} helloSuperToSuperPacket;
+
+typedef struct fileInfoSharePacket {
+    headerPacket hdr;
+    unsigned int fileNum;
+    fileInfoStoreStruct files[MAX_FILES];
+} fileInfoSharePacket;
+
+typedef struct fileInfoShareSuccessPacket {
+    headerPacket hdr;
+    unsigned int fileNum;
+    fileInfoStoreStruct files[MAX_FILES];
+} fileInfoShareSuccessPacket;
+
 /*
  * Function: initHashTable()
  * Initialize file information table

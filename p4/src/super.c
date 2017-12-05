@@ -55,6 +55,8 @@ int main(int argc, char* argv[]) {
     if ( otherSuperPortNum && otherSuperIpAddr[0] ) {
         /* Connect to the other super node */
         clientSock = openClientSock(otherSuperIpAddr, otherSuperPortNum);
+        if ( clientSock < 0 )
+            return -1;
         /* Construct hello from super to super packet */
         helloSuperToSuperPkt.hdr.totalLen = htonl(sizeof(helloSuperToSuperPacket));
         helloSuperToSuperPkt.hdr.id = htonl(id);
