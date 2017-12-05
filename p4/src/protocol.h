@@ -19,9 +19,9 @@
 #define FILE_INFO_SHARE_SUCCESS 0x00000051
 #define FILE_INFO_SHARE_ERROR   0x00000052
 
-#define DATA_SIZE       5000
-#define HEADER_LENGTH   12
-#define MAX_FILES       10
+#define DATA_SIZE   5000
+#define HEADER_LEN  12
+#define MAX_FILES   10
 
 typedef struct headerPacket {
     uint32_t totalLen;
@@ -46,13 +46,13 @@ typedef struct fileInformation {
 
 typedef struct fileInfoPacket {
     headerPacket hdr;
-    unsigned int fileNumber;
+    unsigned int fileNum;
     fileInformation files[MAX_FILES];
 } fileInfoPacket;
 
 typedef struct fileInfoRecvSuccessPacket {
     headerPacket hdr;
-    unsigned int fileNumber;
+    unsigned int fileNum;
     char fileNames[MAX_FILES][96];
 } fileInfoRecvSuccessPacket;
 
@@ -79,13 +79,13 @@ typedef struct fileResSuccessPacket {
 
 typedef struct fileInfoSharePacket {
     headerPacket hdr;
-    unsigned int fileNumber;
+    unsigned int fileNum;
     fileInformation files[MAX_FILES];
 } fileInfoSharePacket;
 
 typedef struct fileInfoShareSuccessPacket {
     headerPacket hdr;
-    unsigned int fileNumber;
+    unsigned int fileNum;
     fileInformation files[MAX_FILES];
 } fileInfoShareSuccessPacket;
 

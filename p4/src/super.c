@@ -3,18 +3,21 @@
 int main(int argc, char* argv[]) {
     int serverSock, clientSock;
     struct sockaddr_in clientAddr;
-    const unsigned int id = rand();
+    const unsigned int id = rand(); //TODO: rand() cannot generate random number
     socklen_t clientAddrLen = sizeof(clientSock);
     fileDescriptorPool fdPool;      /* Information pool about fd sets */
+    int i;
+    childListeningPort childPorts[CHILD_NUMBER];
     unsigned int portNum = 0, otherSuperPortNum = 0;
     char otherSuperIpAddr[20] = {0};
     int retVal;
     int option_index;
     struct option long_options[] = {
-        {"s_ip",    required_argument, 0, 'a'},
-        {"s_port",  required_argument, 0, 'b'}
+        {"s_ip",   required_argument, 0, 'a'},
+        {"s_port", required_argument, 0, 'b'}
     };
     helloSuperToSuperPacket helloSuperToSuperPkt;
+    fileInformationTable fileInfoTable;     // Place to store file information from child nodes
     /* Start parsing arguments */
     while (1) {
         retVal = getopt_long(argc, argv, "p:a:b:", long_options, &option_index);
@@ -33,12 +36,19 @@ int main(int argc, char* argv[]) {
                 otherSuperPortNum = atoi(optarg);
                 break;
             case '?':
-                printf("Not defined option\n");
+                printf("Undefined option\n");
                 break;
             default:
                 printf("Unknown\n");
                 break;
         }
+    }
+
+    initFileInfoTable(&fileInfoTable);  // Initialize file information table
+
+    /* Initialize child ports */
+    for ( i = 0; i < CHILD_NUMBER; i++ ) {
+        childPorts[i].portNum = 0;
     }
 
     /* Say hello to other super node */
@@ -84,7 +94,8 @@ int main(int argc, char* argv[]) {
         }
         /* Connections in other sockets */
         if ( fdPool.nready ) {
-            handleClientFds(&fdPool, otherSuperIpAddr, &otherSuperPortNum);
+            handleClientFds(&fdPool, otherSuperIpAddr,
+                &otherSuperPortNum, &fileInfoTable, childPorts, id);
         }
     }
 

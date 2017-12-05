@@ -1,5 +1,13 @@
 #include "super_lib.h"
 
+void initFileInfoTable(fileInformationTable* fileInfoTable) {
+    int i;
+    for ( i = 0; i < HASH_TABLE_SIZE; i++ ) {
+        fileInfoTable->fileInfoList[i] = NULL;
+    }
+    fileInfoTable->len = 0;
+}
+
 int hashFunction(char* key) {
     int i, sum = 0;
     for (i = 0; i < strlen(key); i++) {
@@ -8,7 +16,7 @@ int hashFunction(char* key) {
     return (sum % HASH_TABLE_SIZE);
 }
 
-int insertFileInfo(superFileInfoStruct* fileInfo,
+int insertFileInfo(fileInfoStoreStruct* fileInfo,
     fileInformationTable* fileInfoTable)
 {
     int index;
@@ -30,8 +38,8 @@ int insertFileInfo(superFileInfoStruct* fileInfo,
     return 0;
 }
 
-superFileInfoStruct* searchFileInfo(char* fileName,
-    superFileInfoStruct** fileInfoList)
+fileInfoStoreStruct* searchFileInfo(char* fileName,
+    fileInfoStoreStruct** fileInfoList)
 {
     /* Get the hash */
     int index = hashFunction(fileName);
@@ -47,7 +55,10 @@ superFileInfoStruct* searchFileInfo(char* fileName,
     return NULL;
 }
 
-void handleClientFds(fileDescriptorPool* fdPool, char* otherSuperIpAddr, int* otherSuperPortNum) {
+void handleClientFds(fileDescriptorPool* fdPool, char* otherSuperIpAddr,
+    int* otherSuperPortNum, fileInformationTable* fileInfoTable,
+    childListeningPort* childPorts, unsigned int id)
+{
     int i, clientSock, nread;
     /* Find the FDs ready to be read */
     for ( i = 0; (i <= fdPool->maxi) && (fdPool->nready > 0); i++ ) {
@@ -66,20 +77,28 @@ void handleClientFds(fileDescriptorPool* fdPool, char* otherSuperIpAddr, int* ot
             }
             else {  /* There are data from client */
                 handleClientRequest(clientSock, otherSuperIpAddr,
-                    otherSuperPortNum, &(fdPool->clientAddr[i]));
+                    otherSuperPortNum, &(fdPool->clientAddr[i]),
+                    fileInfoTable, childPorts, id);
             }
         }
     }
 }
 
 void handleClientRequest(int clientSock, char* otherSuperIpAddr,
-    int* otherSuperPortNum, struct sockaddr_in* clientAddr)
+    int* otherSuperPortNum, struct sockaddr_in* clientAddr,
+    fileInformationTable* fileInfoTable, childListeningPort* childPorts,
+    unsigned int id)
 {
-    char buffer[1020] = {0};    // 1020 is approximately the length of the biggest possible packet: fileInfoPacket
-    int bytes_read;
-    headerPacket hdr;
+    int i;
+    unsigned int childPort = 0;
+    char buffer[1020] = {0}; /* 1020 is approximately the length of the biggest possible packet: fileInfoPacket */
+    int bytes_read;     /* Number of bytes read from client */
+    headerPacket hdr;   /* Used to parse packet header */
+    fileInfoStoreStruct* fileInfoStore;
+
     /* Possible packet */
     helloFromChildPacket* helloFromChildPkt = NULL;
+    headerPacket* helloFromSuperPkt = NULL;
     helloSuperToSuperPacket* helloSuperToSuperPkt = NULL;
     fileInfoPacket* fileInfoPkt = NULL;
     searchQueryPacket* searchQueryPkt = NULL;
@@ -95,9 +114,30 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
         exit(-1);
     }
     /* Parse header of packet */
-    memcpy(&hdr, buffer, HEADER_LENGTH);
+    memcpy(&hdr, buffer, HEADER_LEN);
     switch( ntohl(hdr.msgType) ) {
         case HELLO_FROM_CHILD:
+            printf("Received HELLO_FROM_CHILD packet\n");
+            /* Allocate memory for the packet */
+            helloFromChildPkt = (helloFromChildPacket*) malloc(sizeof(helloFromChildPacket));
+            /* Fill in data */
+            memcpy(helloFromChildPkt, buffer, sizeof(helloFromChildPacket));
+            /* Find available place to store child port */
+            for ( i = 0; i < CHILD_NUMBER; i++ ) {
+                if ( (childPorts[i].portNum) )
+                    continue;
+                childPorts[i].id = ntohl(helloFromChildPkt->hdr.id);
+                childPorts[i].portNum = ntohl(helloFromChildPkt->portNum);
+                break;
+            }
+            free(helloFromChildPkt);
+            /* Construct HELLO_FROM_SUPER message */
+            helloFromSuperPkt = (headerPacket*) malloc(HEADER_LEN);
+            helloFromSuperPkt->totalLen = htonl(HEADER_LEN);
+            helloFromSuperPkt->id = htonl(id);
+            helloFromSuperPkt->msgType = htonl(HELLO_FROM_SUPER);
+            write(clientSock, helloFromSuperPkt, HEADER_LEN);
+            free(helloFromSuperPkt);
             break;
         case HELLO_SUPER_TO_SUPER:  //TODO: consider sending back a hello message
             printf("Received HELLO_SUPER_TO_SUPER packet\n");
@@ -113,6 +153,40 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             free(helloSuperToSuperPkt);
             break;
         case FILE_INFO:
+            printf("Received FILE_INFO packet\n");
+            /* Find corersponding client port */
+            for ( i = 0; i < CHILD_NUMBER; i++ ) {
+                if ( childPorts[i].id == ntohl(hdr.id) ) {
+                    childPort = childPorts[i].portNum;
+                    break;
+                }
+            }
+            if ( !childPort ) {
+                printf("Could not find corersponding port number\n");
+                return;
+            }
+            /* Allocate memory for the packet */
+            fileInfoPkt = (fileInfoPacket*) malloc(sizeof(fileInfoPacket));
+            /* Fill in data */
+            memcpy(fileInfoPkt, buffer, ntohl(hdr.totalLen));
+            /* Store file information */
+            for ( i = 0; i < ntohl(fileInfoPkt->fileNum); i++ ) {
+                /* Construct information */
+                fileInfoStore = (fileInfoStoreStruct*) malloc(sizeof(fileInfoStoreStruct));
+                strcpy(fileInfoStore->fileName, fileInfoPkt->files[i].fileName);
+                fileInfoStore->fileSize = ntohl(fileInfoPkt->files[i].fileSize);
+                strcpy(fileInfoStore->ipAddr, inet_ntoa(clientAddr->sin_addr));
+                fileInfoStore->portNum = childPort;
+                printf("File %d: %s\t%u bytes\tPort: %d\n", i+1, fileInfoStore->fileName, fileInfoStore->fileSize, fileInfoStore->portNum);
+                /* Put file information into hash table */
+                insertFileInfo(fileInfoStore, fileInfoTable);
+            }
+            //TODO: share info to other super node
+            /* Construct packet to share information to other super node */
+            // fileInfoSharePkt = (fileInfoSharePacket*) malloc(sizeof(fileInfoSharePacket));
+            // memcpy(fileInfoSharePkt, buffer, ntohl(hdr.totalLen));
+            // free(fileInfoSharePkt);
+            free(fileInfoPkt);
             break;
         case SEARCH_QUERY:
             break;
