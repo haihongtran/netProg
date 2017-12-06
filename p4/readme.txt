@@ -6,7 +6,7 @@ I. How to run the program
     4. Enter command 'get [file_name] [destination_file_name]' to download file from peers
 
 II. Description of messages
-    The structure of header is given as follow:
+    The structure of header is given as follow. The number in round brackets describes size of the field in bytes.
         --------------------------------------------
         | Total length (4) | ID (4) | MSG Type (4) |
         --------------------------------------------
@@ -73,7 +73,7 @@ II. Description of messages
         + An array of information of files including IPs, port numbers, names and sizes
 
     10. FILE_INFO_SHARE_SUCCESS
-        + Same structure with FILE_INFO_SHARE
+        The same structure as FILE_INFO_SHARE.
 
     11. Others
         Other messages only have header, no payload.
