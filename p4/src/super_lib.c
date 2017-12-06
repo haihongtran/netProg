@@ -211,7 +211,6 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             fileInfoRecvSuccessPkt = (fileInfoRecvSuccessPacket*) malloc (sizeof(fileInfoRecvSuccessPacket));
             fileInfoReplyLen = HEADER_LEN + sizeof(unsigned int) + ntohl(fileInfoPkt->fileNum)*FILE_NAME_LEN;
             fileInfoRecvSuccessPkt->hdr.totalLen = htonl(fileInfoReplyLen);
-            printf("Total len of FILE_INFO_RECV_SUCCESS packet to send back is %u\n", fileInfoReplyLen);
             fileInfoRecvSuccessPkt->hdr.id = htonl(id);
             fileInfoRecvSuccessPkt->hdr.msgType = htonl(FILE_INFO_RECV_SUCCESS);
             fileInfoRecvSuccessPkt->fileNum = fileInfoPkt->fileNum; // Copy directly the network format (Big Endian)
@@ -232,7 +231,6 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
                 fileInfoSharePkt->files[i].portNum = htonl(fileInfoStore->portNum);
                 /* Copy data to FILE_INFO_RECV_SUCCESS packet */
                 strcpy(fileInfoRecvSuccessPkt->fileNames[i], fileInfoStore->fileName);
-                printf("File %s copied to FILE_INFO_RECV_SUCCESS packet\n", fileInfoRecvSuccessPkt->fileNames[i]);
             }
             free(fileInfoPkt);
             /* Sending FILE_INFO_RECV_SUCCESS back to child node */

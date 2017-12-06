@@ -50,8 +50,6 @@ void* childServer(void* arg) {
 
 void handleClientFds(fileDescriptorPool* fdPool, unsigned int id) {
     int i, clientSock, nread;
-    handleClientReqArg* args;
-    pthread_t tid;
     /* Find the FDs ready to be read */
     for ( i = 0; (i <= fdPool->maxi) && (fdPool->nready > 0); i++ ) {
         clientSock = fdPool->clientfd[i];
@@ -68,16 +66,13 @@ void handleClientFds(fileDescriptorPool* fdPool, unsigned int id) {
                 fdPool->clientfd[i] = -1;
             }
             else {  /* There are data from client */
-                args = (handleClientReqArg*) malloc(sizeof(handleClientReqArg));
-                args->clientSock = clientSock;
-                args->id = id;
-                pthread_create(&tid, NULL, handleClientRequest, (void*)args);
+                handleClientRequest(clientSock, id);
             }
         }
     }
 }
 
-void* handleClientRequest(void* arg) {
+void handleClientRequest(int clientSock, unsigned int id) {
     fileReqPacket fileReqPkt;
     int fd, bytes_read;
     char reqFileName[FILE_NAME_LEN_DIR] = {0};    /* ./data/<fileName> */
@@ -86,19 +81,12 @@ void* handleClientRequest(void* arg) {
     unsigned int pktLen;
     headerPacket* fileResFailPkt;
     headerPacket* fileResSuccessPkt;
-    handleClientReqArg arguments = *(handleClientReqArg*) arg;
-
-    /* Free allocated memory after copy */
-    free(arg);
-
-    /* Thread reaps itself after termination */
-    pthread_detach(pthread_self());
 
     /* Read data from peer */
-    bytes_read = read(arguments.clientSock, &fileReqPkt, sizeof(fileReqPacket));
+    bytes_read = read(clientSock, &fileReqPkt, sizeof(fileReqPacket));
     if ( bytes_read < 0 ) {
         perror("Cannot read from peer socket");
-        pthread_exit(NULL);
+        return;
     }
     /* Parse message type */
     switch( ntohl(fileReqPkt.hdr.msgType) ) {
@@ -112,9 +100,9 @@ void* handleClientRequest(void* arg) {
                 printf("File not found\n");
                 fileResFailPkt = (headerPacket*) malloc(HEADER_LEN);
                 fileResFailPkt->totalLen = htonl(HEADER_LEN);
-                fileResFailPkt->id = htonl(arguments.id);
+                fileResFailPkt->id = htonl(id);
                 fileResFailPkt->msgType = htonl(FILE_RES_FAIL);
-                write(arguments.clientSock, fileResFailPkt, HEADER_LEN);
+                write(clientSock, fileResFailPkt, HEADER_LEN);
                 printf("Sending back FILE_RES_FAIL packet to peer\n");
                 free(fileResFailPkt);
                 break;
@@ -123,7 +111,7 @@ void* handleClientRequest(void* arg) {
             fileResSuccessPkt = (headerPacket*) malloc(HEADER_LEN);
             pktLen = HEADER_LEN + fileSize;
             fileResSuccessPkt->totalLen = ntohl(pktLen);
-            fileResSuccessPkt->id = ntohl(arguments.id);
+            fileResSuccessPkt->id = ntohl(id);
             fileResSuccessPkt->msgType = ntohl(FILE_RES_SUCCESS);
             sendBuffer = (uint8_t*) malloc(pktLen);
             memcpy(sendBuffer, fileResSuccessPkt, HEADER_LEN);
@@ -134,19 +122,19 @@ void* handleClientRequest(void* arg) {
                 perror("Cannot open file");
                 fileResFailPkt = (headerPacket*) malloc(HEADER_LEN);
                 fileResFailPkt->totalLen = htonl(HEADER_LEN);
-                fileResFailPkt->id = htonl(arguments.id);
+                fileResFailPkt->id = htonl(id);
                 fileResFailPkt->msgType = htonl(FILE_RES_FAIL);
-                write(arguments.clientSock, fileResFailPkt, HEADER_LEN);
+                write(clientSock, fileResFailPkt, HEADER_LEN);
                 printf("Sending back FILE_RES_FAIL packet to peer\n");
                 free(fileResFailPkt);
                 free(sendBuffer);
-                pthread_exit(NULL);
+                break;
             }
             /* Read all data of the file into sending buffer */
             bytes_read = read(fd, sendBuffer + HEADER_LEN, fileSize);
             close(fd);
             /* Send file to peer */
-            write(arguments.clientSock, sendBuffer, pktLen);
+            write(clientSock, sendBuffer, pktLen);
             printf("Sending back FILE_RES_SUCCESS to peer with data\n");
             free(sendBuffer);
             break;
@@ -154,5 +142,4 @@ void* handleClientRequest(void* arg) {
             // printf("Unexpected message. Its message type is 0x%08x\n", ntohl(fileReqPkt.hdr.msgType));
             break;
     }
-    pthread_exit(NULL);
 }

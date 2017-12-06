@@ -12,11 +12,6 @@ typedef struct threadArguments {
     unsigned int id;
 } threadArguments;
 
-typedef struct handleClientReqArg {
-    int clientSock;
-    unsigned int id;
-} handleClientReqArg;
-
 /*
  * Function: getFileSize()
  * Return file size in long int
@@ -30,7 +25,6 @@ off_t getFileSize(const char *fileName);
 void* childServer(void* arg);
 
 void handleClientFds(fileDescriptorPool* fdPool, unsigned int id);
-// void handleClientRequest(int clientSock, unsigned int id);
-void* handleClientRequest(void* arg);
+void handleClientRequest(int clientSock, unsigned int id);
 
 #endif  /*__CHILD_LIB_H__*/
