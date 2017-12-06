@@ -17,7 +17,7 @@
 
 #define LISTENQ             1024
 #define HEADER_LEN          12
-#define MAX_FILES           10
+#define MAX_FILES           100
 #define FILE_NAME_LEN       96
 #define FILE_NAME_LEN_DIR   110
 

@@ -4,7 +4,7 @@
 #include "protocol.h"
 #include "common.h"
 
-#define HASH_TABLE_SIZE 100
+#define HASH_TABLE_SIZE 1000
 #define CHILD_NUMBER 50
 
 /* Structure to store file information from child nodes */
