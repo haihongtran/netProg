@@ -3,7 +3,7 @@
 int main(int argc, char* argv[]) {
     int serverSock, clientSock;
     struct sockaddr_in clientAddr;
-    const unsigned int id = rand(); //TODO: rand() cannot generate random number
+    unsigned int id;
     socklen_t clientAddrLen = sizeof(clientSock);
     fileDescriptorPool fdPool;      /* Information pool about fd sets */
     int i;
@@ -43,6 +43,9 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
+
+    /* ID of the node */
+    id = rand() * portNum;
 
     initFileInfoTable(&fileInfoTable);  // Initialize file information table
 

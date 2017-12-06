@@ -3,7 +3,7 @@
 int main(int argc, char* argv[]) {
     int clientSock;
     pthread_t tid;
-    const unsigned int id = rand(); //TODO: rand() cannot generate random number
+    unsigned int id;
     unsigned int portNum = 0, superPortNum = 0;
     char superIpAddr[20] = {0};
     int retVal;
@@ -65,6 +65,10 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
+
+    /* ID of the node */
+    id = rand() * portNum;
+
     /* Connect to corresponding super node */
     clientSock = openClientSock(superIpAddr, superPortNum);
     if ( clientSock < 0 )
@@ -88,8 +92,8 @@ int main(int argc, char* argv[]) {
     /* Construct file info packet */
     fileInfoPkt.hdr.id = htonl(id);
     fileInfoPkt.hdr.msgType = htonl(FILE_INFO);
-    if ((dir = opendir ("./data")) != NULL) {
-        while ((ent = readdir (dir)) != NULL) {
+    if ( (dir = opendir ("./data")) != NULL ) {
+        while ( (ent = readdir (dir)) != NULL ) {
             /* Skipping '.' and '..' files */
             if ( (strcmp(ent->d_name, ".") == 0) || (strcmp(ent->d_name, "..") == 0) )
                 continue;
@@ -113,15 +117,14 @@ int main(int argc, char* argv[]) {
     printf("Sending file information to super node\n");
     close(clientSock);
 
-    //TODO: uncomment this to run the listening thread
     /* Thread arguments */
-    // threadArgs.portNum = portNum;
-    // threadArgs.id = id;
-    // /* Run a thread to listen for peer connection */
-    // if ( pthread_create(&tid, NULL, childServer, (void*)&threadArgs) != 0 ) {
-    //     printf("Cannot create listening thread\n");
-    //     return -1;
-    // }
+    threadArgs.portNum = portNum;
+    threadArgs.id = id;
+    /* Run a thread to listen for peer connection */
+    if ( pthread_create(&tid, NULL, childServer, (void*)&threadArgs) != 0 ) {
+        printf("Cannot create listening thread\n");
+        return -1;
+    }
 
     while(1) {
         fileNotFound = false;
@@ -168,6 +171,8 @@ int main(int argc, char* argv[]) {
                 strcpy(peerIp, searchAnsSuccessPkt->ipAddr);
                 peerPort = ntohl(searchAnsSuccessPkt->portNum);
                 fileSize = ntohl(searchAnsSuccessPkt->fileSize);
+                printf("The peer having requested file is %s:%u\n", peerIp, peerPort);
+                printf("Requested file size is %d\n", fileSize);
                 break;
             case SEARCH_ANS_FAIL:
                 printf("Received SEARCH_ANS_FAIL packet from super node. File %s not found\n", reqFile);
@@ -184,15 +189,13 @@ int main(int argc, char* argv[]) {
         if (fileNotFound)
             continue;
 
-        printf("The peer having requested file is %s:%u\n", peerIp, peerPort);
-        continue;   //TODO: remove this continue to start download file
-
         /* Connect to peer */
         clientSock = openClientSock(peerIp, peerPort);
         if (clientSock < 0) {
             printf("Could not connect to peer\n");
             continue;
         }
+        printf("Connected to peer\n");
         /* Allocate memory to receive file from peer */
         receiveBuffer = (uint8_t*) malloc(HEADER_LEN + fileSize);
         /* Construct FILE_REQ to send to peer */
@@ -203,14 +206,16 @@ int main(int argc, char* argv[]) {
         strcpy(fileReqPkt->fileName, reqFile);
         /* Send FILE_REQ packet */
         write(clientSock, fileReqPkt, sizeof(fileReqPacket));
+        printf("Sending FILE_REQ to peer\n");
         free(fileReqPkt);
         /* Wait for reply from peer */
-        read(clientSock, &receiveBuffer, HEADER_LEN + fileSize);
+        read(clientSock, receiveBuffer, HEADER_LEN + fileSize);
         /* Parse header of received packet */
         hdrFileResponse = (headerPacket*) malloc(HEADER_LEN);
         memcpy(hdrFileResponse, receiveBuffer, HEADER_LEN);
         switch ( ntohl(hdrFileResponse->msgType) ) {
             case FILE_RES_SUCCESS:
+                printf("Received FILE_RES_SUCCESS packet from peer\n");
                 if ( ntohl(hdrFileResponse->totalLen) != (HEADER_LEN + fileSize) ) {
                     printf("Total len is %u, while (HEADER_LEN + fileSize) = %u\n", ntohl(hdrFileResponse->totalLen), HEADER_LEN + fileSize);
                     break;
@@ -227,18 +232,16 @@ int main(int argc, char* argv[]) {
                 close(storeFd);
                 break;
             case FILE_RES_FAIL:
-                printf("Peer does not have the file %s\n", reqFile);
+                printf("Received FILE_RES_FAIL packet from peer. Peer does not have the file %s\n", reqFile);
                 break;
             default:
                 printf("Unexpected message from peer. Its message type is 0x%08x\n", ntohl(hdrFileResponse->msgType));
                 break;
         }
+        close(clientSock);  /* Close socket to peer */
         free(hdrFileResponse);
         free(receiveBuffer);
     }
-
-    // Delete this after implement the above while loop
-    // pthread_join(tid, NULL);
 
     return 0;
 }

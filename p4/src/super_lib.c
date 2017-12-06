@@ -240,19 +240,19 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
                                            fileInfoTable->fileInfoList);
             free(searchQueryPkt);
             if ( !fileInfoStore ) {
-                printf("Cannot find the file %s", searchQueryPkt->fileName);
-                /* Construct FILE_RES_FAIL packet */
+                printf("Cannot find the file %s\n", searchQueryPkt->fileName);
+                /* Construct SEARCH_ANS_FAIL packet */
                 searchAnsFailPkt = (headerPacket*) malloc(HEADER_LEN);
                 searchAnsFailPkt->totalLen = htonl(HEADER_LEN);
                 searchAnsFailPkt->id = htonl(id);
-                searchAnsFailPkt->msgType = htonl(FILE_RES_FAIL);
-                /* Send FILE_RES_FAIL packet to child node */
+                searchAnsFailPkt->msgType = htonl(SEARCH_ANS_FAIL);
+                /* Send SEARCH_ANS_FAIL packet to child node */
                 write(clientSock, searchAnsFailPkt, HEADER_LEN);
-                printf("Sending FILE_RES_FAIL packet to child node\n");
+                printf("Sending SEARCH_ANS_FAIL packet to child node\n");
                 free(searchAnsFailPkt);
                 break;
             }
-            /* Construct FILE_RES_SUCCESS packet */
+            /* Construct SEARCH_ANS_SUCCESS packet */
             searchAnsSuccessPkt = (searchAnsSuccessPacket*) malloc(sizeof(searchAnsSuccessPacket));
             searchAnsSuccessPkt->hdr.totalLen = htonl(sizeof(searchAnsSuccessPacket));
             searchAnsSuccessPkt->hdr.id = htonl(id);
@@ -260,9 +260,9 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             strcpy(searchAnsSuccessPkt->ipAddr, fileInfoStore->ipAddr);
             searchAnsSuccessPkt->portNum = htonl(fileInfoStore->portNum);
             searchAnsSuccessPkt->fileSize = htonl(fileInfoStore->fileSize);
-            /* Send FILE_RES_SUCCESS packet to child node */
+            /* Send SEARCH_ANS_SUCCESS packet to child node */
             write(clientSock, searchAnsSuccessPkt, sizeof(searchAnsSuccessPacket));
-            printf("Sending back FILE_RES_SUCCESS packet to child node\n");
+            printf("Sending back SEARCH_ANS_SUCCESS packet to child node\n");
             free(searchAnsSuccessPkt);
             break;
         case FILE_INFO_SHARE:
@@ -307,11 +307,8 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             printf("Sending FILE_INFO_SHARE_SUCCESS packet back to other super node\n");
             free(fileInfoSharePkt);
             break;
-        // case FILE_INFO_SHARE_SUCCESS:
-        //     break;
-        // case FILE_INFO_SHARE_ERROR:
-        //     break;
         default:
+            printf("Unexpected message. Its message type is 0x%08x\n", ntohl(hdr.msgType));
             break;
     }
 }
