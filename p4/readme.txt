@@ -60,9 +60,9 @@ II. Description of messages
         + Name of the requested file
 
     8. FILE_RES_SUCCESS
-        ------------------------
-        | FILE DATA (variable) |
-        ------------------------
+        ---------------------
+        | FILE DATA (10000) |
+        ---------------------
         + Data of the file
 
     9. FILE_INFO_SHARE
@@ -80,3 +80,4 @@ II. Description of messages
 
 III. Notes:
     1. File name in Linux has maximum length of 255 characters, but currently in the code the length of file name is limited to 95 characters.
+    2. Data file from child node to child node will be sent in many small packets, each with 10000 bytes in size

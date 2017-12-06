@@ -22,13 +22,17 @@ int main(int argc, char* argv[]) {
     searchQueryPacket* searchQueryPkt;
     searchAnsSuccessPacket* searchAnsSuccessPkt;
     fileReqPacket* fileReqPkt;
-    headerPacket* hdrFileResponse;
-    uint8_t* receiveBuffer; // Store file data from peer
+    uint8_t* fileBuffer; // Store file data from peer
     bool fileNotFound = false;
     char peerIp[20];
     unsigned int peerPort;
     unsigned int fileSize;
     int storeFd;
+    fileResSuccessPacket* fileResSuccessPkt;
+    int bytes_read;
+    int bytes_stored;
+    int dataLen;
+    bool fileResFail = false;
 
     DIR* dir;
     struct dirent* ent;
@@ -217,9 +221,6 @@ int main(int argc, char* argv[]) {
             continue;
         }
         printf("Connected to peer\n");
-        /* Allocate memory to receive file from peer */
-        pktLen = HEADER_LEN + fileSize;
-        receiveBuffer = (uint8_t*) malloc(pktLen);
         /* Construct FILE_REQ to send to peer */
         fileReqPkt = (fileReqPacket*) malloc(sizeof(fileReqPacket));
         fileReqPkt->hdr.totalLen = htonl(sizeof(fileReqPacket));
@@ -230,39 +231,57 @@ int main(int argc, char* argv[]) {
         write(clientSock, fileReqPkt, sizeof(fileReqPacket));
         printf("Sending FILE_REQ to peer\n");
         free(fileReqPkt);
-        /* Wait for reply from peer */
-        read(clientSock, receiveBuffer, pktLen);
-        /* Parse header of received packet */
-        hdrFileResponse = (headerPacket*) malloc(HEADER_LEN);
-        memcpy(hdrFileResponse, receiveBuffer, HEADER_LEN);
-        switch ( ntohl(hdrFileResponse->msgType) ) {
-            case FILE_RES_SUCCESS:
-                printf("Received FILE_RES_SUCCESS packet from peer\n");
-                if ( ntohl(hdrFileResponse->totalLen) != pktLen ) {
-                    printf("Total len is %u, while (HEADER_LEN + fileSize) = %u\n", ntohl(hdrFileResponse->totalLen), pktLen);
-                    break;
-                }
-                if ( (storeFd = open(destFile, O_WRONLY | O_CREAT, 0666)) < 0 ) {
-                    perror("Could not open file to write");
-                    break;
-                }
-                if ( write(storeFd, receiveBuffer + HEADER_LEN, fileSize) < 0 ) {
-                    perror("Could not write new file");
-                    close(storeFd);
-                    break;
-                }
-                close(storeFd);
+
+        bytes_stored = 0;
+        fileResFail = false;
+        /* Allocate memory for FILE_RES_SUCCESS packet */
+        fileResSuccessPkt = (fileResSuccessPacket*) malloc(sizeof(fileResSuccessPacket));
+        /* Buffer to store data received from peer */
+        fileBuffer = (uint8_t*) malloc(fileSize);
+        /* Receive file from peer */
+        while(1) {
+            bytes_read = read(clientSock, fileResSuccessPkt, sizeof(fileResSuccessPacket));
+            if ( bytes_read < 0 ) {
+                perror("Cannot read from peer socket");
                 break;
-            case FILE_RES_FAIL:
-                printf("Received FILE_RES_FAIL packet from peer. Peer does not have the file %s\n", reqFile);
+            }
+            switch ( ntohl(fileResSuccessPkt->hdr.msgType) ) {
+                case FILE_RES_SUCCESS:
+                    dataLen = ntohl(fileResSuccessPkt->hdr.totalLen) - HEADER_LEN;
+                    memcpy(fileBuffer + bytes_stored, fileResSuccessPkt->data, dataLen);
+                    bytes_stored += dataLen;
+                    break;
+                case FILE_RES_FAIL:
+                    printf("Received FILE_RES_FAIL packet from peer\n");
+                    fileResFail = true;
+                    break;
+                default:
+                    printf("Unexpected message. Its message type is 0x%08x\n", ntohl(fileResSuccessPkt->hdr.msgType));
+                    fileResFail = true;
+                    break;
+            }
+            if ( fileResFail )
                 break;
-            default:
-                printf("Unexpected message from peer. Its message type is 0x%08x\n", ntohl(hdrFileResponse->msgType));
+            if ( bytes_stored == fileSize )
                 break;
         }
-        close(clientSock);  /* Close socket to peer */
-        free(hdrFileResponse);
-        free(receiveBuffer);
+        if (fileResFail)
+            continue;
+        
+        if ( (storeFd = open(destFile, O_WRONLY | O_CREAT, 0755)) < 0 ) {
+            perror("Could not open file to write");
+            free(fileBuffer);
+            continue;
+        }
+        if ( write(storeFd, fileBuffer, fileSize) < 0 ) {
+            perror("Could not write new file");
+            free(fileBuffer);
+            close(storeFd);
+            continue;
+        }
+        printf("File stored\n");
+        free(fileBuffer);
+        close(storeFd);
     }
 
     return 0;

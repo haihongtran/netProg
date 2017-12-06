@@ -20,6 +20,7 @@
 #define MAX_FILES           100
 #define FILE_NAME_LEN       96
 #define FILE_NAME_LEN_DIR   110
+#define DATA_SIZE           10000
 
 /* Communication packets between super node and child node */
 typedef struct headerPacket {
@@ -66,6 +67,11 @@ typedef struct fileReqPacket {
     headerPacket hdr;
     char fileName[FILE_NAME_LEN];
 } fileReqPacket;
+
+typedef struct fileResSuccessPacket {
+    headerPacket hdr;
+    uint8_t data[DATA_SIZE];
+} fileResSuccessPacket;
 
 /* Information structure for file descriptor (FD) sets */
 typedef struct fileDescriptorPool {
