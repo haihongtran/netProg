@@ -103,6 +103,8 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     helloSuperToSuperPacket* helloSuperToSuperPkt = NULL;
     headerPacket* helloSuperToSuperReply = NULL;
     fileInfoPacket* fileInfoPkt = NULL;
+    fileInfoRecvSuccessPacket* fileInfoRecvSuccessPkt = NULL;
+    headerPacket* fileInfoRecvErrorPkt = NULL;
     searchQueryPacket* searchQueryPkt = NULL;
     searchAnsSuccessPacket* searchAnsSuccessPkt = NULL;
     headerPacket* searchAnsFailPkt = NULL;
@@ -168,7 +170,20 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             free(helloSuperToSuperReply);
             break;
         case FILE_INFO:
-            printf("Received FILE_INFO packet\n");
+            printf("Received FILE_INFO packet from a child node\n");
+            if ( ntohl(hdr.totalLen) > bytes_read ) {
+                printf("Not receiving all contents from child node.\n");
+                /* Constructing FILE_INFO_RECV_ERROR packet */
+                fileInfoRecvErrorPkt = (headerPacket*) malloc(HEADER_LEN);
+                fileInfoRecvErrorPkt->totalLen = htonl(HEADER_LEN);
+                fileInfoRecvErrorPkt->id = htonl(id);
+                fileInfoRecvErrorPkt->msgType = htonl(FILE_INFO_RECV_ERROR);
+                /* Sending FILE_INFO_RECV_ERROR packet */
+                write(clientSock, fileInfoRecvErrorPkt, HEADER_LEN);
+                printf("Sending FILE_INFO_RECV_ERROR packet back to child node\n");
+                free(fileInfoRecvErrorPkt);
+                break;
+            }
             /* Find corersponding client port */
             for ( i = 0; i < CHILD_NUMBER; i++ ) {
                 if ( childPorts[i].id == ntohl(hdr.id) ) {
@@ -191,6 +206,12 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             pktLen = HEADER_LEN + sizeof(unsigned int) + ntohl(fileInfoPkt->fileNum)*sizeof(fileInfoStoreStruct);
             fileInfoSharePkt->hdr.totalLen = htonl(pktLen);
             fileInfoSharePkt->fileNum = fileInfoPkt->fileNum;   // Copy directly the network format (Big Endian)
+            /* Construct FILE_INFO_RECV_SUCCESS packet */
+            fileInfoRecvSuccessPkt = (fileInfoRecvSuccessPacket*) malloc (sizeof(fileInfoRecvSuccessPacket));
+            fileInfoRecvSuccessPkt->hdr.totalLen = htonl(HEADER_LEN + ntohl(fileInfoPkt->fileNum)*96);
+            fileInfoRecvSuccessPkt->hdr.id = htonl(id);
+            fileInfoRecvSuccessPkt->hdr.msgType = htonl(FILE_INFO_RECV_SUCCESS);
+            fileInfoRecvSuccessPkt->fileNum = fileInfoPkt->fileNum; // Copy directly the network format (Big Endian)
             /* Store file information */
             for ( i = 0; i < ntohl(fileInfoPkt->fileNum); i++ ) {
                 /* Construct information */
@@ -206,10 +227,14 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
                 fileInfoSharePkt->files[i].fileSize = htonl(fileInfoStore->fileSize);
                 strcpy(fileInfoSharePkt->files[i].ipAddr, fileInfoStore->ipAddr);
                 fileInfoSharePkt->files[i].portNum = htonl(fileInfoStore->portNum);
+                /* Copy data to FILE_INFO_RECV_SUCCESS packet */
+                strcpy(fileInfoRecvSuccessPkt->fileNames[i], fileInfoStore->fileName);
             }
-            //TODO: send FILE_INFO_RECV_SUCCESS back to child
             free(fileInfoPkt);
-            //TODO: consider sending FILE_INFO_RECV_ERROR back to child
+            /* Sending FILE_INFO_RECV_SUCCESS back to child node */
+            write(clientSock, fileInfoRecvSuccessPkt, HEADER_LEN + ntohl(fileInfoPkt->fileNum)*96);
+            printf("Sending FILE_INFO_RECV_SUCCESS back to child node\n");
+            free(fileInfoRecvSuccessPkt);
             /* Connect to other super node */
             socketOtherSuper = openClientSock(otherSuperIpAddr, *otherSuperPortNum);
             if ( socketOtherSuper < 0 ) {
@@ -278,7 +303,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
         case FILE_INFO_SHARE:
             printf("Received FILE_INFO_SHARE packet from other super node\n");
             if ( ntohl(hdr.totalLen) > bytes_read ) {
-                printf("Not receiving all contents from other super node. Sending back FILE_INFO_SHARE_ERROR message\n");
+                printf("Not receiving all contents from other super node.\n");
                 fileInfoShareErrorPkt = (headerPacket*) malloc(HEADER_LEN);
                 fileInfoShareErrorPkt->totalLen = htonl(HEADER_LEN);
                 fileInfoShareErrorPkt->id = htonl(id);

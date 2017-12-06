@@ -15,6 +15,8 @@ int main(int argc, char* argv[]) {
     helloFromChildPacket helloFromChildPkt;
     headerPacket helloFromSuperPkt;
     fileInfoPacket fileInfoPkt;
+    fileInfoRecvSuccessPacket fileInfoRecvSuccessPkt;
+
     /* Download file */
     char inputBuffer[200], reqFile[96], destFile[110];
     searchQueryPacket* searchQueryPkt;
@@ -115,6 +117,22 @@ int main(int argc, char* argv[]) {
     /* Send file info packet to super node */
     write(clientSock, &fileInfoPkt, pktLen);
     printf("Sending file information to super node\n");
+    //TODO: waiting for reply from super node
+    /* Waiting for reply from super node */
+    read(clientSock, &fileInfoRecvSuccessPkt, sizeof(fileInfoRecvSuccessPkt));
+    switch ( ntohl(fileInfoRecvSuccessPkt.hdr.msgType) ) {
+        case FILE_INFO_RECV_SUCCESS:
+            printf("Received FILE_INFO_RECV_SUCCESS packet from super node\n");
+            break;
+        case FILE_INFO_RECV_ERROR:
+            printf("Received FILE_INFO_RECV_ERROR packet from super node\n");
+            close(clientSock);
+            return -1;
+        default:
+            printf("Unexpected message from super node. Its message type is 0x%08x.", ntohl(fileInfoRecvSuccessPkt.hdr.msgType));
+            close(clientSock);
+            return -1;
+    }
     close(clientSock);
 
     /* Thread arguments */
