@@ -92,7 +92,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     int i, socketOtherSuper = 0;
     unsigned int pktLen = 0;
     unsigned int childPort = 0;
-    char buffer[1020] = {0}; /* 1020 is approximately the of the biggest possible packet: fileInfoPacket */
+    char recvBuff[1020] = {0}; /* 1020 is approximately the of the biggest possible packet: fileInfoPacket */
     int bytes_read;     /* Number of bytes read from client */
     headerPacket hdr;   /* Used to parse packet header */
     fileInfoStoreStruct* fileInfoStore;
@@ -104,6 +104,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     fileInfoPacket* fileInfoPkt = NULL;
     searchQueryPacket* searchQueryPkt = NULL;
     searchAnsSuccessPacket* searchAnsSuccessPkt = NULL;
+    headerPacket* searchAnsFailPkt = NULL;
     fileInfoSharePacket* fileInfoSharePkt = NULL;
     fileInfoShareSuccessPacket* fileInfoShareSuccessPkt = NULL;
     headerPacket* fileInfoShareErrorPkt = NULL;
@@ -111,20 +112,20 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     char bufferInfoShare[1260] = {0};   /* 1260 is approximately length of FILE_INFO_SHARE message */
 
     /* Read data from client */
-    bytes_read = read(clientSock, buffer, sizeof(buffer));
+    bytes_read = read(clientSock, recvBuff, sizeof(recvBuff));
     if ( bytes_read < 0 ) {
         perror("Cannot read from client socket");
-        exit(-1);
+        return;
     }
     /* Parse header of packet */
-    memcpy(&hdr, buffer, HEADER_LEN);
+    memcpy(&hdr, recvBuff, HEADER_LEN);
     switch( ntohl(hdr.msgType) ) {
         case HELLO_FROM_CHILD:
             printf("Received HELLO_FROM_CHILD packet\n");
             /* Allocate memory for the packet */
             helloFromChildPkt = (helloFromChildPacket*) malloc(sizeof(helloFromChildPacket));
             /* Fill in data */
-            memcpy(helloFromChildPkt, buffer, sizeof(helloFromChildPacket));
+            memcpy(helloFromChildPkt, recvBuff, sizeof(helloFromChildPacket));
             /* Find available place to store child port */
             for ( i = 0; i < CHILD_NUMBER; i++ ) {
                 if ( (childPorts[i].portNum) )
@@ -148,7 +149,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             /* Allocate memory for the packet */
             helloSuperToSuperPkt = (helloSuperToSuperPacket*) malloc(sizeof(helloSuperToSuperPacket));
             /* Fill in data */
-            memcpy(helloSuperToSuperPkt, buffer, sizeof(helloSuperToSuperPacket));
+            memcpy(helloSuperToSuperPkt, recvBuff, sizeof(helloSuperToSuperPacket));
             /* Save port number of other super node */
             *otherSuperPortNum = ntohl(helloSuperToSuperPkt->portNum);
             /* Save IP address of other super node */
@@ -172,7 +173,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             /* Allocate memory to hold data of the FILE_INFO message */
             fileInfoPkt = (fileInfoPacket*) malloc(sizeof(fileInfoPacket));
             /* Fill in data */
-            memcpy(fileInfoPkt, buffer, ntohl(hdr.totalLen));
+            memcpy(fileInfoPkt, recvBuff, ntohl(hdr.totalLen));
             /* Construct FILE_INFO_SHARE message */
             fileInfoSharePkt = (fileInfoSharePacket*) malloc(sizeof(fileInfoSharePacket));
             fileInfoSharePkt->hdr.id = htonl(id);
@@ -229,9 +230,43 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             close(socketOtherSuper);
             break;
         case SEARCH_QUERY:
+            printf("Received SEARCH_QUERY packet from peer\n");
+            /* Allocate memory for the packet */
+            searchQueryPkt = (searchQueryPacket*) malloc(sizeof(searchQueryPacket));
+            /* Fill in data */
+            memcpy(searchQueryPkt, recvBuff, ntohl(hdr.totalLen));
+            /* Search information of the requested file */
+            fileInfoStore = searchFileInfo(searchQueryPkt->fileName,
+                                           fileInfoTable->fileInfoList);
+            free(searchQueryPkt);
+            if ( !fileInfoStore ) {
+                printf("Cannot find the file %s", searchQueryPkt->fileName);
+                /* Construct FILE_RES_FAIL packet */
+                searchAnsFailPkt = (headerPacket*) malloc(HEADER_LEN);
+                searchAnsFailPkt->totalLen = htonl(HEADER_LEN);
+                searchAnsFailPkt->id = htonl(id);
+                searchAnsFailPkt->msgType = htonl(FILE_RES_FAIL);
+                /* Send FILE_RES_FAIL packet to child node */
+                write(clientSock, searchAnsFailPkt, HEADER_LEN);
+                printf("Sending FILE_RES_FAIL packet to child node\n");
+                free(searchAnsFailPkt);
+                break;
+            }
+            /* Construct FILE_RES_SUCCESS packet */
+            searchAnsSuccessPkt = (searchAnsSuccessPacket*) malloc(sizeof(searchAnsSuccessPacket));
+            searchAnsSuccessPkt->hdr.totalLen = htonl(sizeof(searchAnsSuccessPacket));
+            searchAnsSuccessPkt->hdr.id = htonl(id);
+            searchAnsSuccessPkt->hdr.msgType = htonl(SEARCH_ANS_SUCCESS);
+            strcpy(searchAnsSuccessPkt->ipAddr, fileInfoStore->ipAddr);
+            searchAnsSuccessPkt->portNum = htonl(fileInfoStore->portNum);
+            searchAnsSuccessPkt->fileSize = htonl(fileInfoStore->fileSize);
+            /* Send FILE_RES_SUCCESS packet to child node */
+            write(clientSock, searchAnsSuccessPkt, sizeof(searchAnsSuccessPacket));
+            printf("Sending back FILE_RES_SUCCESS packet to child node\n");
+            free(searchAnsSuccessPkt);
             break;
         case FILE_INFO_SHARE:
-            printf("Received FILE_INFO_SHARE message from other super node\n");
+            printf("Received FILE_INFO_SHARE packet from other super node\n");
             if ( ntohl(hdr.totalLen) > bytes_read ) {
                 printf("Not receiving all contents from other super node. Sending back FILE_INFO_SHARE_ERROR message\n");
                 fileInfoShareErrorPkt = (headerPacket*) malloc(HEADER_LEN);
@@ -246,7 +281,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             /* Allocate memory for the packet */
             fileInfoSharePkt = (fileInfoSharePacket*) malloc(sizeof(fileInfoSharePacket));
             /* Fill in data */
-            memcpy(fileInfoSharePkt, buffer, ntohl(hdr.totalLen));
+            memcpy(fileInfoSharePkt, recvBuff, ntohl(hdr.totalLen));
             fileInfoShareSuccessPkt = (fileInfoShareSuccessPacket*) malloc(sizeof(fileInfoShareSuccessPacket));
             fileInfoShareSuccessPkt->hdr.totalLen = fileInfoSharePkt->hdr.totalLen; // Copy directly network format
             fileInfoShareSuccessPkt->hdr.id = htonl(id);

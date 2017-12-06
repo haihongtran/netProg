@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 #define LISTENQ     1024
-#define DATA_SIZE   5000
+#define DATA_SIZE   100000
 #define HEADER_LEN  12
 #define MAX_FILES   10
 
@@ -58,6 +58,7 @@ typedef struct searchAnsSuccessPacket {
     headerPacket hdr;
     char ipAddr[20];
     unsigned int portNum;
+    unsigned int fileSize;  //TODO: check if this is allowed
 } searchAnsSuccessPacket;
 
 typedef struct fileReqPacket {
