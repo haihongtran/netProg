@@ -50,6 +50,8 @@ void* childServer(void* arg) {
 
 void handleClientFds(fileDescriptorPool* fdPool, unsigned int id) {
     int i, clientSock, nread;
+    handleClientReqArg* args;
+    pthread_t tid;
     /* Find the FDs ready to be read */
     for ( i = 0; (i <= fdPool->maxi) && (fdPool->nready > 0); i++ ) {
         clientSock = fdPool->clientfd[i];
@@ -66,13 +68,16 @@ void handleClientFds(fileDescriptorPool* fdPool, unsigned int id) {
                 fdPool->clientfd[i] = -1;
             }
             else {  /* There are data from client */
-                handleClientRequest(clientSock, id);
+                args = (handleClientReqArg*) malloc(sizeof(handleClientReqArg));
+                args->clientSock = clientSock;
+                args->id = id;
+                pthread_create(&tid, NULL, handleClientRequest, (void*)args);
             }
         }
     }
 }
 
-void handleClientRequest(int clientSock, unsigned int id) {
+void* handleClientRequest(void* arg) {
     fileReqPacket fileReqPkt;
     int fd, bytes_read;
     char reqFileName[110] = {0};    /* ./data/<fileName> */
@@ -80,11 +85,19 @@ void handleClientRequest(int clientSock, unsigned int id) {
     int fileSize;
     headerPacket* fileResFailPkt;
     headerPacket* fileResSuccessPkt;
+    handleClientReqArg arguments = *(handleClientReqArg*) arg;
+
+    /* Free allocated memory after copy */
+    free(arg);
+
+    /* Thread reaps itself after termination */
+    pthread_detach(pthread_self());
+
     /* Read data from peer */
-    bytes_read = read(clientSock, &fileReqPkt, sizeof(fileReqPacket));
+    bytes_read = read(arguments.clientSock, &fileReqPkt, sizeof(fileReqPacket));
     if ( bytes_read < 0 ) {
         perror("Cannot read from peer socket");
-        return;
+        exit(-1);
     }
     /* Parse message type */
     switch( ntohl(fileReqPkt.hdr.msgType) ) {
@@ -96,16 +109,16 @@ void handleClientRequest(int clientSock, unsigned int id) {
             if ( fileSize < 0 ) {
                 fileResFailPkt = (headerPacket*) malloc(HEADER_LEN);
                 fileResFailPkt->totalLen = htonl(HEADER_LEN);
-                fileResFailPkt->id = htonl(id);
+                fileResFailPkt->id = htonl(arguments.id);
                 fileResFailPkt->msgType = htonl(FILE_RES_FAIL);
-                write(clientSock, fileResFailPkt, HEADER_LEN);
+                write(arguments.clientSock, fileResFailPkt, HEADER_LEN);
                 free(fileResFailPkt);
                 break;
             }
             /* Construct FILE_RES_SUCCESS packet */
             fileResSuccessPkt = (headerPacket*) malloc(HEADER_LEN);
             fileResSuccessPkt->totalLen = ntohl(HEADER_LEN + fileSize);
-            fileResSuccessPkt->id = ntohl(id);
+            fileResSuccessPkt->id = ntohl(arguments.id);
             fileResSuccessPkt->msgType = ntohl(FILE_RES_SUCCESS);
             sendBuffer = (uint8_t*) malloc(HEADER_LEN + fileSize);
             memcpy(sendBuffer, fileResSuccessPkt, HEADER_LEN);
@@ -115,18 +128,18 @@ void handleClientRequest(int clientSock, unsigned int id) {
             {
                 fileResFailPkt = (headerPacket*) malloc(HEADER_LEN);
                 fileResFailPkt->totalLen = htonl(HEADER_LEN);
-                fileResFailPkt->id = htonl(id);
+                fileResFailPkt->id = htonl(arguments.id);
                 fileResFailPkt->msgType = htonl(FILE_RES_FAIL);
-                write(clientSock, fileResFailPkt, HEADER_LEN);
+                write(arguments.clientSock, fileResFailPkt, HEADER_LEN);
                 free(fileResFailPkt);
                 free(sendBuffer);
-                return;
+                exit(-1);
             }
             /* Read all data of the file into sending buffer */
             bytes_read = read(fd, sendBuffer + HEADER_LEN, fileSize);
             close(fd);
             /* Send file to peer */
-            write(clientSock, sendBuffer, HEADER_LEN + fileSize);
+            write(arguments.clientSock, sendBuffer, HEADER_LEN + fileSize);
             free(sendBuffer);
             break;
         default:
