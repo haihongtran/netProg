@@ -91,6 +91,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
 {
     int i, socketOtherSuper = 0;
     unsigned int pktLen = 0;
+    unsigned int fileInfoReplyLen = 0;
     unsigned int childPort = 0;
     char recvBuff[1020] = {0}; /* 1020 is approximately the of the biggest possible packet: fileInfoPacket */
     int bytes_read;     /* Number of bytes read from client */
@@ -208,7 +209,9 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             fileInfoSharePkt->fileNum = fileInfoPkt->fileNum;   // Copy directly the network format (Big Endian)
             /* Construct FILE_INFO_RECV_SUCCESS packet */
             fileInfoRecvSuccessPkt = (fileInfoRecvSuccessPacket*) malloc (sizeof(fileInfoRecvSuccessPacket));
-            fileInfoRecvSuccessPkt->hdr.totalLen = htonl(HEADER_LEN + ntohl(fileInfoPkt->fileNum)*96);
+            fileInfoReplyLen = HEADER_LEN + sizeof(unsigned int) + ntohl(fileInfoPkt->fileNum)*96;
+            fileInfoRecvSuccessPkt->hdr.totalLen = htonl(fileInfoReplyLen);
+            printf("Total len of FILE_INFO_RECV_SUCCESS packet to send back is %u\n", fileInfoReplyLen);
             fileInfoRecvSuccessPkt->hdr.id = htonl(id);
             fileInfoRecvSuccessPkt->hdr.msgType = htonl(FILE_INFO_RECV_SUCCESS);
             fileInfoRecvSuccessPkt->fileNum = fileInfoPkt->fileNum; // Copy directly the network format (Big Endian)
@@ -229,10 +232,11 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
                 fileInfoSharePkt->files[i].portNum = htonl(fileInfoStore->portNum);
                 /* Copy data to FILE_INFO_RECV_SUCCESS packet */
                 strcpy(fileInfoRecvSuccessPkt->fileNames[i], fileInfoStore->fileName);
+                printf("File %s copied to FILE_INFO_RECV_SUCCESS packet\n", fileInfoRecvSuccessPkt->fileNames[i]);
             }
             free(fileInfoPkt);
             /* Sending FILE_INFO_RECV_SUCCESS back to child node */
-            write(clientSock, fileInfoRecvSuccessPkt, HEADER_LEN + ntohl(fileInfoPkt->fileNum)*96);
+            write(clientSock, fileInfoRecvSuccessPkt, fileInfoReplyLen);
             printf("Sending FILE_INFO_RECV_SUCCESS back to child node\n");
             free(fileInfoRecvSuccessPkt);
             /* Connect to other super node */

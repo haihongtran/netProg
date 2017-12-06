@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     }
 
     /* ID of the node */
-    id = rand() * portNum;
+    id = getRandNum() * portNum;
 
     /* Connect to corresponding super node */
     clientSock = openClientSock(superIpAddr, superPortNum);
@@ -117,7 +117,6 @@ int main(int argc, char* argv[]) {
     /* Send file info packet to super node */
     write(clientSock, &fileInfoPkt, pktLen);
     printf("Sending file information to super node\n");
-    //TODO: waiting for reply from super node
     /* Waiting for reply from super node */
     read(clientSock, &fileInfoRecvSuccessPkt, sizeof(fileInfoRecvSuccessPkt));
     switch ( ntohl(fileInfoRecvSuccessPkt.hdr.msgType) ) {
@@ -215,7 +214,8 @@ int main(int argc, char* argv[]) {
         }
         printf("Connected to peer\n");
         /* Allocate memory to receive file from peer */
-        receiveBuffer = (uint8_t*) malloc(HEADER_LEN + fileSize);
+        pktLen = HEADER_LEN + fileSize;
+        receiveBuffer = (uint8_t*) malloc(pktLen);
         /* Construct FILE_REQ to send to peer */
         fileReqPkt = (fileReqPacket*) malloc(sizeof(fileReqPacket));
         fileReqPkt->hdr.totalLen = htonl(sizeof(fileReqPacket));
@@ -227,15 +227,15 @@ int main(int argc, char* argv[]) {
         printf("Sending FILE_REQ to peer\n");
         free(fileReqPkt);
         /* Wait for reply from peer */
-        read(clientSock, receiveBuffer, HEADER_LEN + fileSize);
+        read(clientSock, receiveBuffer, pktLen);
         /* Parse header of received packet */
         hdrFileResponse = (headerPacket*) malloc(HEADER_LEN);
         memcpy(hdrFileResponse, receiveBuffer, HEADER_LEN);
         switch ( ntohl(hdrFileResponse->msgType) ) {
             case FILE_RES_SUCCESS:
                 printf("Received FILE_RES_SUCCESS packet from peer\n");
-                if ( ntohl(hdrFileResponse->totalLen) != (HEADER_LEN + fileSize) ) {
-                    printf("Total len is %u, while (HEADER_LEN + fileSize) = %u\n", ntohl(hdrFileResponse->totalLen), HEADER_LEN + fileSize);
+                if ( ntohl(hdrFileResponse->totalLen) != pktLen ) {
+                    printf("Total len is %u, while (HEADER_LEN + fileSize) = %u\n", ntohl(hdrFileResponse->totalLen), pktLen);
                     break;
                 }
                 if ( (storeFd = open(destFile, O_WRONLY | O_CREAT, 0666)) < 0 ) {

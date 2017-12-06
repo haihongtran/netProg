@@ -94,4 +94,10 @@ void addClient(int sockfd, struct sockaddr_in* clientAddr, fileDescriptorPool *f
  */
 int openClientSock(const char* ipAddr, int portNum);
 
+/*
+ * Function: getRandNum()
+ * Return a random number
+ */
+int getRandNum();
+
 #endif  /*__COMMON_H__*/

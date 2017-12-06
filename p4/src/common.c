@@ -108,3 +108,10 @@ int openClientSock(const char* ipAddr, int portNum)
     }
     return clientSock;
 }
+
+int getRandNum() {
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    srand(spec.tv_nsec);
+    return rand();
+}

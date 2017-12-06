@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
     }
 
     /* ID of the node */
-    id = rand() * portNum;
+    id = getRandNum() * portNum;
 
     initFileInfoTable(&fileInfoTable);  // Initialize file information table
 
@@ -68,6 +68,7 @@ int main(int argc, char* argv[]) {
         helloSuperToSuperPkt.portNum = htonl(portNum);
         /* Send hello packet to other super node */
         write(clientSock, &helloSuperToSuperPkt, sizeof(helloSuperToSuperPacket));
+        printf("Sending HELLO_SUPER_TO_SUPER packet to other super node.\n");
         /* Wait for reply */
         read(clientSock, &helloSuperToSuperReply, HEADER_LEN);
         if ( ntohl(helloSuperToSuperReply.msgType) != HELLO_SUPER_TO_SUPER ) {
@@ -76,7 +77,7 @@ int main(int argc, char* argv[]) {
             return -1;
         }
         else
-            printf("Received reply from other super node\n");
+            printf("Received reply from other super node.\n");
         /* Close socket */
         close(clientSock);
     }
