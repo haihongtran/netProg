@@ -101,6 +101,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
     helloFromChildPacket* helloFromChildPkt = NULL;
     headerPacket* helloFromSuperPkt = NULL;
     helloSuperToSuperPacket* helloSuperToSuperPkt = NULL;
+    headerPacket* helloSuperToSuperReply = NULL;
     fileInfoPacket* fileInfoPkt = NULL;
     searchQueryPacket* searchQueryPkt = NULL;
     searchAnsSuccessPacket* searchAnsSuccessPkt = NULL;
@@ -141,10 +142,10 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             helloFromSuperPkt->id = htonl(id);
             helloFromSuperPkt->msgType = htonl(HELLO_FROM_SUPER);
             write(clientSock, helloFromSuperPkt, HEADER_LEN);
-            printf("Sending HELLO_FROM_SUPER packet\n");
+            printf("Sending HELLO_FROM_SUPER packet to child node\n");
             free(helloFromSuperPkt);
             break;
-        case HELLO_SUPER_TO_SUPER:  //TODO: consider sending back a hello message
+        case HELLO_SUPER_TO_SUPER:
             printf("Received HELLO_SUPER_TO_SUPER packet\n");
             /* Allocate memory for the packet */
             helloSuperToSuperPkt = (helloSuperToSuperPacket*) malloc(sizeof(helloSuperToSuperPacket));
@@ -156,6 +157,15 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             strcpy(otherSuperIpAddr, inet_ntoa(clientAddr->sin_addr));
             /* Free the memory allocated */
             free(helloSuperToSuperPkt);
+            /* Construct reply */
+            helloSuperToSuperReply = (headerPacket*) malloc(HEADER_LEN);
+            helloSuperToSuperReply->totalLen = ntohl(HEADER_LEN);
+            helloSuperToSuperReply->id = ntohl(id);
+            helloSuperToSuperReply->msgType = ntohl(HELLO_SUPER_TO_SUPER);
+            /* Send reply */
+            write(clientSock, helloSuperToSuperReply, HEADER_LEN);
+            printf("Replying HELLO_SUPER_TO_SUPER to other super node\n");
+            free(helloSuperToSuperReply);
             break;
         case FILE_INFO:
             printf("Received FILE_INFO packet\n");
@@ -209,7 +219,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             }
             /* Send FILE_INFO_SHARE packet */
             write(socketOtherSuper, fileInfoSharePkt, pktLen);
-            printf("Sending FILE_INFO_SHARE packet\n");
+            printf("Sending FILE_INFO_SHARE packet to other super node\n");
             free(fileInfoSharePkt);
             /* Waiting for reply */
             bytes_read = read(socketOtherSuper, bufferInfoShare, sizeof(bufferInfoShare));

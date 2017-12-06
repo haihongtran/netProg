@@ -17,6 +17,7 @@ int main(int argc, char* argv[]) {
         {"s_port", required_argument, 0, 'b'}
     };
     helloSuperToSuperPacket helloSuperToSuperPkt;
+    headerPacket helloSuperToSuperReply;
     fileInformationTable fileInfoTable;     // Place to store file information from child nodes
     /* Start parsing arguments */
     while (1) {
@@ -65,8 +66,17 @@ int main(int argc, char* argv[]) {
         helloSuperToSuperPkt.hdr.id = htonl(id);
         helloSuperToSuperPkt.hdr.msgType = htonl(HELLO_SUPER_TO_SUPER);
         helloSuperToSuperPkt.portNum = htonl(portNum);
-        /* Send hello packet */
+        /* Send hello packet to other super node */
         write(clientSock, &helloSuperToSuperPkt, sizeof(helloSuperToSuperPacket));
+        /* Wait for reply */
+        read(clientSock, &helloSuperToSuperReply, HEADER_LEN);
+        if ( ntohl(helloSuperToSuperReply.msgType) != HELLO_SUPER_TO_SUPER ) {
+            printf("Unexpected message from other super node. Its message type is 0x%08x.\n", ntohl(helloSuperToSuperReply.msgType));
+            close(clientSock);
+            return -1;
+        }
+        else
+            printf("Received reply from other super node\n");
         /* Close socket */
         close(clientSock);
     }
