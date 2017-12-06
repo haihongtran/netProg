@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
     fileInfoRecvSuccessPacket fileInfoRecvSuccessPkt;
 
     /* Download file */
-    char inputBuffer[200], reqFile[96], destFile[110];
+    char inputBuffer[200], reqFile[FILE_NAME_LEN], destFile[FILE_NAME_LEN_DIR];
     searchQueryPacket* searchQueryPkt;
     searchAnsSuccessPacket* searchAnsSuccessPkt;
     fileReqPacket* fileReqPkt;
@@ -149,13 +149,17 @@ int main(int argc, char* argv[]) {
         printf("Input command: ");  // format: get reqFile destFile
         fgets(inputBuffer, 200, stdin);
         token = strtok(inputBuffer, " \n");  // read 'get'
+        if ( strcmp(token, "get") != 0 ) {
+            printf("Wrong command. Please enter 'get [file_name] [destination_file_name]\n");
+            continue;
+        }
         /* Get reqFile */
         token = strtok(NULL, " \n");
-        memset(reqFile, '\0', 96);
+        memset(reqFile, '\0', FILE_NAME_LEN);
         strcpy(reqFile, token);
         /* Get destFile */
         token = strtok(NULL, " \n");
-        memset(destFile, '\0', 110);
+        memset(destFile, '\0', FILE_NAME_LEN_DIR);
         strcpy(destFile, "./download/");
         strcat(destFile, token);
         printf("Request file name is %s\n", reqFile);

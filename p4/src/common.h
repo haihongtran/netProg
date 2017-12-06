@@ -15,10 +15,11 @@
 #include <getopt.h>
 #include <stdint.h>
 
-#define LISTENQ     1024
-#define DATA_SIZE   100000
-#define HEADER_LEN  12
-#define MAX_FILES   10
+#define LISTENQ             1024
+#define HEADER_LEN          12
+#define MAX_FILES           10
+#define FILE_NAME_LEN       96
+#define FILE_NAME_LEN_DIR   110
 
 /* Communication packets between super node and child node */
 typedef struct headerPacket {
@@ -33,7 +34,7 @@ typedef struct helloFromChildPacket {
 } helloFromChildPacket;
 
 typedef struct fileInformation {
-    char fileName[96];
+    char fileName[FILE_NAME_LEN];
     unsigned int fileSize;
 } fileInformation;
 
@@ -46,30 +47,25 @@ typedef struct fileInfoPacket {
 typedef struct fileInfoRecvSuccessPacket {
     headerPacket hdr;
     unsigned int fileNum;
-    char fileNames[MAX_FILES][96];
+    char fileNames[MAX_FILES][FILE_NAME_LEN];
 } fileInfoRecvSuccessPacket;
 
 typedef struct searchQueryPacket {
     headerPacket hdr;
-    char fileName[96];
+    char fileName[FILE_NAME_LEN];
 } searchQueryPacket;
 
 typedef struct searchAnsSuccessPacket {
     headerPacket hdr;
     char ipAddr[20];
     unsigned int portNum;
-    unsigned int fileSize;  //TODO: check if this is allowed
+    unsigned int fileSize;
 } searchAnsSuccessPacket;
 
 typedef struct fileReqPacket {
     headerPacket hdr;
-    char fileName[96];
+    char fileName[FILE_NAME_LEN];
 } fileReqPacket;
-
-typedef struct fileResSuccessPacket {
-    headerPacket hdr;
-    uint8_t data[DATA_SIZE];
-} fileResSuccessPacket;
 
 /* Information structure for file descriptor (FD) sets */
 typedef struct fileDescriptorPool {

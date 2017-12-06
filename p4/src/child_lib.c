@@ -80,7 +80,7 @@ void handleClientFds(fileDescriptorPool* fdPool, unsigned int id) {
 void* handleClientRequest(void* arg) {
     fileReqPacket fileReqPkt;
     int fd, bytes_read;
-    char reqFileName[110] = {0};    /* ./data/<fileName> */
+    char reqFileName[FILE_NAME_LEN_DIR] = {0};    /* ./data/<fileName> */
     uint8_t* sendBuffer;       /* Hold data packet to send */
     int fileSize;
     unsigned int pktLen;

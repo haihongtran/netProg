@@ -9,7 +9,7 @@
 
 /* Structure to store file information from child nodes */
 typedef struct fileInfoStoreStruct {
-    char fileName[96];
+    char fileName[FILE_NAME_LEN];
     unsigned int fileSize;
     char ipAddr[20];
     unsigned int portNum;

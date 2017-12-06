@@ -209,7 +209,7 @@ void handleClientRequest(int clientSock, char* otherSuperIpAddr,
             fileInfoSharePkt->fileNum = fileInfoPkt->fileNum;   // Copy directly the network format (Big Endian)
             /* Construct FILE_INFO_RECV_SUCCESS packet */
             fileInfoRecvSuccessPkt = (fileInfoRecvSuccessPacket*) malloc (sizeof(fileInfoRecvSuccessPacket));
-            fileInfoReplyLen = HEADER_LEN + sizeof(unsigned int) + ntohl(fileInfoPkt->fileNum)*96;
+            fileInfoReplyLen = HEADER_LEN + sizeof(unsigned int) + ntohl(fileInfoPkt->fileNum)*FILE_NAME_LEN;
             fileInfoRecvSuccessPkt->hdr.totalLen = htonl(fileInfoReplyLen);
             printf("Total len of FILE_INFO_RECV_SUCCESS packet to send back is %u\n", fileInfoReplyLen);
             fileInfoRecvSuccessPkt->hdr.id = htonl(id);
