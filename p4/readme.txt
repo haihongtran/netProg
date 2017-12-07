@@ -10,8 +10,8 @@ II. Description of messages
         --------------------------------------------
         | Total length (4) | ID (4) | MSG Type (4) |
         --------------------------------------------
-    All following packets has header, which includes Total Length, ID of the node, and MSG Type, as specified in description of the assignment.
-    In the followings, only description of payload is given.
+
+    Please note that all the packets of the protocol has the described header. In the following, only description of payload is given.
 
     1. HELLO_FROM_CHILD
         -------------------
@@ -60,9 +60,9 @@ II. Description of messages
         + Name of the requested file
 
     8. FILE_RES_SUCCESS
-        ---------------------
-        | FILE DATA (10000) |
-        ---------------------
+        ----------------------------------------------
+        |              FILE DATA (10000)             |
+        ----------------------------------------------
         + Data of the file
 
     9. FILE_INFO_SHARE
