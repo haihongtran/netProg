@@ -50,6 +50,9 @@ III. Description of messages
             -------------------
             | Port number (4) |
             -------------------
+        + NOTE:
+            - When super node 2 says HELLO to super node 1, it includes its port number
+            - When super ndoe 1 says HELLO back to super node 2, the packet only has header, no payload
 
     3. FILE_INFO
         + Number of files (maximum 100)

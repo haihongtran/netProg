@@ -147,6 +147,8 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    printf("Command format: 'get [file_name] [destination_file_name]'\n");
+
     while(1) {
         fileNotFound = false;
         /* Get input user request for file */
@@ -154,7 +156,7 @@ int main(int argc, char* argv[]) {
         fgets(inputBuffer, 200, stdin);
         token = strtok(inputBuffer, " \n");  // read 'get'
         if ( strcmp(token, "get") != 0 ) {
-            printf("Wrong command. Please enter 'get [file_name] [destination_file_name]\n");
+            printf("Wrong command. Please enter 'get [file_name] [destination_file_name]'\n");
             continue;
         }
         /* Get reqFile */
